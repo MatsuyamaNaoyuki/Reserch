@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "matsuyama"
+version = "0.1.0"
+description = ""
+authors = ["weiwei <wanweiwei07@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+torch = "^2.5.1"
+torchvision = "^0.20.1"
+matplotlib = "^3.10.0"
+pandas = "^2.2.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

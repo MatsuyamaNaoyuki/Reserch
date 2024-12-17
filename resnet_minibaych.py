@@ -76,7 +76,7 @@ def test(model, data_loader):
 input_dim = 17
 output_dim = 12
 learning_rate = 0.001
-num_epochs = 500
+num_epochs = 1
 batch_size =128
 r = 0.8
 
