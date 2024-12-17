@@ -76,7 +76,7 @@ def test(model, data_loader):
 input_dim = 17
 output_dim = 12
 learning_rate = 0.001
-num_epochs = 500
+num_epochs = 1
 batch_size =128
 r = 0.8
 
@@ -87,7 +87,7 @@ if torch.cuda.is_available():
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-filename = "1204_100data_maybeOK\\modi_margeMc_hundred_alldata\\dataset_1213_margeMC_handreddata.csv"
+filename = "C:\\Users\\matsuyama\\program\\larningresult\\1204_100data_maybeOK\\modi_margeMc_hundred_alldata\\dataset_1213_margeMC_handreddata.csv"
 x_data,y_data = myfunction.read_csv_to_torch(filename)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
@@ -131,8 +131,8 @@ for epoch in range(num_epochs):
 
 
 
-myfunction.wirte_pkl(record_test_loss, "1204_100data_maybeOK\\modi_margeMc_hundred_alldata\\modi_margeMc_hundreddata_alldata_testloss")
-myfunction.wirte_pkl(record_train_loss, "1204_100data_maybeOK\\modi_margeMc_hundred_alldata\\modi_margeMc_hundreddata_alldata_trainloss")
+myfunction.wirte_pkl(record_test_loss, "C:\\Users\\matsuyama\\program\\larningresult\\1204_100data_maybeOK\\modi_margeMc_hundred_alldata\\modi_margeMc_hundreddata_alldata_testloss")
+myfunction.wirte_pkl(record_train_loss, "C:\\Users\\matsuyama\\program\\larningresult\\1204_100data_maybeOK\\modi_margeMc_hundred_alldata\\modi_margeMc_hundreddata_alldata_trainloss")
 
 plt.plot(range(len(record_train_loss)), record_train_loss, label="Train")
 plt.plot(range(len(record_test_loss)), record_test_loss, label="Test")

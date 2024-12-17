@@ -230,11 +230,8 @@ def read_csv_to_torch(filename):
 
 def save_model(model, filename):
     now = datetime.datetime.now()
-    current_path = os.path.realpath(__file__)
-    current_dir = os.path.dirname(current_path)
-    parent_dir = os.path.join(current_dir, ".")
-    parent_dir = os.path.realpath(parent_dir)
-    filename = os.path.dirname(parent_dir) +"\\" + filename + now.strftime('%Y%m%d_%H%M%S') + '.pth'
+
+    filename = "C:\\Users\\matsuyama\\program\\larningresult\\1204_100data_maybeOK\modi_margeMc_hundred_alldata"+"\\" + filename + now.strftime('%Y%m%d_%H%M%S') + '.pth'
     model_scripted = torch.jit.script(model)
     model_scripted.save(filename)
 
@@ -251,11 +248,8 @@ def wirte_csv(data, filename):
 
 def wirte_pkl(data, filename):
     now = datetime.datetime.now()
-    current_path = os.path.realpath(__file__)
-    current_dir = os.path.dirname(current_path)
-    parent_dir = os.path.join(current_dir, ".")
-    parent_dir = os.path.realpath(parent_dir)
-    filename = os.path.dirname(parent_dir) +"\\" + filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
+
+    filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
 
     with open(filename, 'wb') as fo:
         pickle.dump(data, fo)
