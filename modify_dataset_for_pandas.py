@@ -63,9 +63,9 @@ df = df.drop(columns=['Mc1y'])
 df = df.drop(columns=['Mc1z'])
 
 # df = df.head(8670)
-df = df[df.index % 10 == 0]
+df = df[df.index % 5 == 0]
 
-df.to_csv("C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\dataset_margemag.csv", index=False)
+df.to_csv("C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\dataset_margemag_tewnty.csv", index=False)
 # print(df.columns)
 
 

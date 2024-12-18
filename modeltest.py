@@ -67,19 +67,19 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 
-# testloss = "1204_100data_maybeOK\\modi_margemag_tendata_alldata\\modi_margemag_tendata_alldata_testloss20241213_165306.pickle"
+# testloss = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\onlymotor_tewntydata\\modi_margeMc_onlymotor_tewntydata_testloss20241218_022550.pickle"
 
 # minid = get_min_loss_epoch(testloss)
 
 # print(minid)
 
 
-modelpath = "modi_margemag_tendata_alldata_model_epoch470_20241213_165221.pth"
+modelpath = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\onlymotor_tewntydata\\modi_margeMc_onlymotor_tewntydata_model_epoch310_20241218_022211.pth"
 
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 
-filename = "1204_100data_maybeOK\\modifying_all\\dataset_1209.csv"
+filename = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\dataset_margemag_tewnty.csv"
 x_data,y_data = myfunction.read_csv_to_torch(filename)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
