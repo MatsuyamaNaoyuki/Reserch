@@ -5,11 +5,11 @@ import matplotlib as mpl
 from myclass import myfunction
 
 
-file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\alldata_tendata\\modi_margeMc_tendata_alldata_trainloss20241218_003741.pickle"
+file_path = "C:\\Users\\shigf\\Program\\data\\modi_margeMc_alldata_tewntydata_trainloss20241218_024252.pickle"
 traindf = pd.read_pickle(file_path)
 traindf = pd.DataFrame(traindf)
 
-file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\alldata_tendata\\modi_margeMc_tendata_alldata_testloss20241218_003741.pickle"
+file_path = "C:\\Users\\shigf\\Program\\data\\modi_margeMc_alldata_tewntydata_testloss20241218_024252.pickle"
 testdf = pd.read_pickle(file_path)
 testdf = pd.DataFrame(testdf)
 
