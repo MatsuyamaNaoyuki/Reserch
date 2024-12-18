@@ -211,6 +211,7 @@ def read_csv_to_torch(filename):
 
     #説明変数と目的変数に分離
     x_value = df.iloc[:, 1:5]
+    # x_value = df.iloc[:, [1,2,3,4,9,10,11,12,13,14,15,16,17]]
     y_value = df.iloc[:, 18:]
 
 

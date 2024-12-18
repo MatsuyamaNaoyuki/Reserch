@@ -13,6 +13,8 @@ scipy = "^1.14.1"
 torch = { version = "*", source = "torch_cu121" }
 torchvision = { version = "*", source = "torch_cu121" }
 torchaudio = { version = "*", source = "torch_cu121" }
+seaborn = "^0.13.2"
+japanize-matplotlib = "^1.1.3"
 
 [[tool.poetry.source]]
 name = "torch_cu121"

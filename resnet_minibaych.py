@@ -73,7 +73,7 @@ def test(model, data_loader):
 
 
 # ハイパーパラメータ
-input_dim = 4
+input_dim = 13
 output_dim = 12
 learning_rate = 0.001
 num_epochs = 500
@@ -87,7 +87,7 @@ if torch.cuda.is_available():
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-filename = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\dataset_margemag.csv"
+filename = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\dataset_margemag_tewnty.csv"
 x_data,y_data = myfunction.read_csv_to_torch(filename)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
@@ -125,16 +125,16 @@ for epoch in range(num_epochs):
 
     if epoch%10 == 0:
         # modelの保存を追加
-        dir_name = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\motoronly_tendata\\"
-        filename = 'modi_margeMc_motoronly_tendata_model_epoch' + str(epoch)+"_"
+        dir_name = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\nomotorforce_tewntydata\\"
+        filename = 'modi_margeMc_nomotorforce_tewntydata_model_epoch' + str(epoch)+"_"
         filename = dir_name + filename
         myfunction.save_model(model, filename)
         print(f"epoch={epoch}, train:{train_loss:.5f}, test:{test_loss:.5f}")
 
 
 
-myfunction.wirte_pkl(record_test_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\motoronly_tendata\\modi_margeMc_motoronly_tendata_testloss")
-myfunction.wirte_pkl(record_train_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\motoronly_tendata\\modi_margeMc_motoronly_tendata_trainloss")
+myfunction.wirte_pkl(record_test_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\nomotorforce_tewntydata\\modi_margeMc_nomotorforce_tewntydata_testloss")
+myfunction.wirte_pkl(record_train_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\nomotorforce_tewntydata\\modi_margeMc_nomotorforce_tewntydata_trainloss")
 
 plt.plot(range(len(record_train_loss)), record_train_loss, label="Train")
 plt.plot(range(len(record_test_loss)), record_test_loss, label="Test")
