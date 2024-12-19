@@ -1,11 +1,11 @@
-import csv
+# import csv
 import pandas as pd
-import seaborn as sns
+# import seaborn as sns
 import matplotlib.pyplot as plt
 import numpy as np
-import math
+# import math
 from scipy.spatial.transform import Rotation as R
-import japanize_matplotlib
+# import japanize_matplotlib
 
 
 # def find_plane_and_rotate_to_xz(points):
@@ -95,7 +95,7 @@ df = df.drop(['sensor1','sensor2','sensor3','sensor4','sensor5','sensor6','senso
 
 
 
-row = df.iloc[0]
+row = df.iloc[60]
 
 
 points = [
