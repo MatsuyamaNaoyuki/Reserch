@@ -87,40 +87,35 @@ def rotate_to_xz(points):
 pd.options.display.float_format = '{:.2f}'.format
 
 
-csv_file_path="1204_100data_maybeOK\\motioncapture20241205_005155.pickle"
-df = pd.read_pickle(csv_file_path)
-files=['time', 'Mc1x', 'Mc1y', 'Mc1z','Mc2x', 'Mc2y', 'Mc2z','Mc3x', 'Mc3y', 'Mc3z','Mc4x', 'Mc4y', 'Mc4z','Mc5x', 'Mc5y', 'Mc5z']
+csv_file_path="C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\dataset_margemag_tewnty.csv"
+df = pd.read_csv(csv_file_path)
+df = df.drop(['time', 'rotate1', 'rotate2', 'rotate3', 'rotate4', 'force1', 'force2', 'force3', 'force4'], axis = 1)
+df = df.drop(['sensor1','sensor2','sensor3','sensor4','sensor5','sensor6','sensor7','sensor8','sensor9',], axis = 1)
 
 
-df = pd.DataFrame(df, columns=files)
-df = df.drop(['time'], axis = 1)
-# print(df)
 
 
-# csv_file_path = "1204_100data_maybeOK\\modifying_all\\dataset_1209.csv"
-# df = pd.read_csv(csv_file_path)
+row = df.iloc[0]
 
-# df = df.drop(['time'], axis = 1)
-# df = df.sort_values('rotate3')
-
-row = df.iloc[60]
-# print(row)
 
 points = [
-    (row['Mc1x'], row['Mc1y'], row['Mc1z']),
+    (0,0,0),
     (row['Mc2x'], row['Mc2y'], row['Mc2z']),
     (row['Mc3x'], row['Mc3y'], row['Mc3z']),
     (row['Mc4x'], row['Mc4y'], row['Mc4z']),
     (row['Mc5x'], row['Mc5y'], row['Mc5z']),
 ]
 
-points0 = [
-    (row['Mc1x']-row['Mc1x'], row['Mc1y']-row['Mc1y'], row['Mc1z']-row['Mc1z']),
-    (row['Mc2x']-row['Mc1x'], row['Mc2y']-row['Mc1y'], row['Mc2z']-row['Mc1z']),
-    (row['Mc3x']-row['Mc1x'], row['Mc3y']-row['Mc1y'], row['Mc3z']-row['Mc1z']),
-    (row['Mc4x']-row['Mc1x'], row['Mc4y']-row['Mc1y'], row['Mc4z']-row['Mc1z']),
-    (row['Mc5x']-row['Mc1x'], row['Mc5y']-row['Mc1y'], row['Mc5z']-row['Mc1z']),
-]
+
+print(points)
+
+# points0 = [
+#     (row['Mc1x']-row['Mc1x'], row['Mc1y']-row['Mc1y'], row['Mc1z']-row['Mc1z']),
+#     (row['Mc2x']-row['Mc1x'], row['Mc2y']-row['Mc1y'], row['Mc2z']-row['Mc1z']),
+#     (row['Mc3x']-row['Mc1x'], row['Mc3y']-row['Mc1y'], row['Mc3z']-row['Mc1z']),
+#     (row['Mc4x']-row['Mc1x'], row['Mc4y']-row['Mc1y'], row['Mc4z']-row['Mc1z']),
+#     (row['Mc5x']-row['Mc1x'], row['Mc5y']-row['Mc1y'], row['Mc5z']-row['Mc1z']),
+# ]
 # rotation = rotate_to_xz(points[1:])
 # P = np.array(points)
 # rotated_points = (rotation @ P.T).T
@@ -128,7 +123,7 @@ points0 = [
 
 
 
-x0,y0,z0 = zip(*points0)
+# x0,y0,z0 = zip(*points0)
 
 x, y, z = zip(*points)
 
@@ -148,12 +143,12 @@ for i in range(len(x)):
     ax.scatter(x[i], y[i], z[i], color=rcolors[i], s=80)  # sは点のサイズ
 
 
-for i in range(len(x0)):
-    # print(x0[i],y0[i],z0[i])
-    ax.scatter(x0[i], y0[i], z0[i], color=bcolors[i], s=80)  # sは点のサイズ
+# for i in range(len(x0)):
+#     # print(x0[i],y0[i],z0[i])
+#     ax.scatter(x0[i], y0[i], z0[i], color=bcolors[i], s=80)  # sは点のサイズ
 
 ax.plot(x[1:], y[1:], z[1:], color='r', label='補正前')
-ax.plot(x0[1:], y0[1:], z0[1:], color='b', label='補正後')
+# ax.plot(x0[1:], y0[1:], z0[1:], color='b', label='補正後')
 # 軸ラベルを設定
 # ax.set_xlabel('X Label', fontsize = 12)
 # ax.set_ylabel('Y Label', fontsize = 12)

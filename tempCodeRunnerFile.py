@@ -1,3 +1,4 @@
-file_path = "1204_100data_maybeOK\\modifying_all\\dataset_1209.csv"
-# dataset = pd.read_pickle(file_path)
-# dataset = pd.DataFrame(testdf)
+
+# for i in range(len(x0)):
+#     # print(x0[i],y0[i],z0[i])
+#     ax.scatter(x0[i], y0[i], z0[i], color=bcolors[i], s=80)  # sは点のサイズ
