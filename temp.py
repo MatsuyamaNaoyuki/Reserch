@@ -34,21 +34,61 @@ def project_points_onto_plane(df, point1, point2):
 
     return pd.DataFrame(projected_data)
 
-def plot_plane(ax, point, normal_vec, xlim, ylim):
+def plot_plane(ax, point, normal_vec, xlim, ylim, zlim=(-200, 0)):
+    normal_vec = np.array(normal_vec)
+    nx, ny, nz = normal_vec
+    x0, y0, z0 = point
 
-    x = np.linspace(xlim[0], xlim[1], 20)
-    y = np.linspace(ylim[0], ylim[1], 20)
-    X, Y = np.meshgrid(x, y)
+    # nx(X - x0) + ny(Y - y0) + nz(Z - z0) = 0
+    # => nz(Z - z0) = -nx(X - x0) - ny(Y - y0)
+    # => Z = z0 - (nx/nz)(X - x0) - (ny/nz)(Y - y0)  (if nz != 0)
 
+    if np.isclose(nz, 0):
+        # nz=0の場合、平面は垂直方向に無限に伸びるため、Zを独立変数としてもY, Xを明示的にZからは求められない。
+        # ここでは、XとZをパラメータとして取り、そこからYを求める、またはYとZをパラメータとするなどの方法を取る。
 
-    if np.isclose(normal_vec[2], 0):
-        Z = np.full_like(X, point[2])  # zを一定値に固定する
+        # 平面方程式: nx(X - x0) + ny(Y - y0) = 0
+        # ny != 0の場合は、Y = y0 - (nx/ny)(X - x0)
+        # ny = 0の場合は、nx(X - x0)=0 => X = x0で固定
+        # それぞれに応じてパラメトリックに定義する
+
+        if np.isclose(ny, 0):
+            # この場合、ny=0なのでnx != 0が必須。よってX = x0で、YとZを独立変数にする。
+            Y = np.linspace(ylim[0], ylim[1], 20)
+            Z = np.linspace(zlim[0], zlim[1], 20)
+            Y, Z = np.meshgrid(Y, Z)
+            X = np.full_like(Y, x0)
+        else:
+            # ny != 0 の場合、XとZを独立変数として、Yを計算する。
+            X = np.linspace(xlim[0], xlim[1], 20)
+            Z = np.linspace(zlim[0], zlim[1], 20)
+            X, Z = np.meshgrid(X, Z)
+            Y = y0 - (nx/ny)*(X - x0)
+
+        return ax.plot_surface(X, Y, Z, alpha=0.5, color="green", edgecolor="none")
+
     else:
-        # 平面の方程式からz座標を計算
-        d = -np.dot(normal_vec, point)
-        Z = (-normal_vec[0] * X - normal_vec[1] * Y - d) / normal_vec[2]
+        # nz != 0 の通常ケース。Zを(X,Y)から求める。
+        x = np.linspace(xlim[0], xlim[1], 20)
+        y = np.linspace(ylim[0], ylim[1], 20)
+        X, Y = np.meshgrid(x, y)
 
-    return ax.plot_surface(X, Y, Z, alpha=0.5, color="green", edgecolor="none")
+        d = - (nx*x0 + ny*y0 + nz*z0)
+        # Z = (-nx*X - ny*Y - d) / nz
+        Z = (-nx*X - ny*Y - d) / nz
+        return ax.plot_surface(X, Y, Z, alpha=0.5, color="green", edgecolor="none")
+
+
+def to_unit_vector(vector):
+
+    vector = np.array(vector)  # 入力をNumPy配列に変換
+    norm = np.linalg.norm(vector)  # ベクトルのノルム（長さ）を計算
+    
+    if norm == 0:
+        raise ValueError("ゼロベクトルには単位ベクトルを定義できません。")
+    
+    return vector / norm
+
 
 # データの準備
 csv_file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\dataset_margemag_tewnty.csv"
@@ -94,7 +134,10 @@ def update(frame):
 
     vec1 = np.array([point2[0] - point1[0], point2[1] - point1[1], point2[2] - point1[2]])
     vec2 = np.array([0,0, + 1])
-    normal_vec = calculate_normal_vector(vec1, vec2)
+
+
+
+    normal_vec = to_unit_vector([1,1,0])
 
     # 平面を描画
     plane = plot_plane(ax, point1, normal_vec, xlim=(-150, 150), ylim=(-150, 150))
