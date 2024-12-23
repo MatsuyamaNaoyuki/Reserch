@@ -4,10 +4,10 @@ from matplotlib.animation import FuncAnimation
 import numpy as np
 
 # データの準備
-csv_file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\dataset_margemag_tewnty.csv"
+csv_file_path = "C:\\Users\\shigf\\Program\\data\\dataset_margemag_tewnty.csv"
 df_moto = pd.read_csv(csv_file_path)
 
-csv_file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\output.csv"
+csv_file_path = "C:\\Users\\shigf\\Program\\data\\output.csv"
 df_ana = pd.read_csv(csv_file_path)
 
 df_moto = df_moto.drop(['time', 'rotate1', 'rotate2', 'rotate3', 'rotate4', 'force1', 'force2', 'force3', 'force4'], axis=1)
@@ -27,11 +27,11 @@ ax.set_ylabel('Y')
 ax.set_zlabel('Z')
 
 # 初期化用のデータ（空のプロットを用意）
-scatter_moto, = ax.plot([], [], [], 'ro', color = 'r', label='推定前', markersize=8)  # 点
+scatter_moto, = ax.plot([], [], [], 'ro', color = 'r', label='before_estimation', markersize=8)  # 点
 line_moto, = ax.plot([], [], [], 'r-', color = 'r')  # 線
 
 
-scatter_ana, = ax.plot([], [], [], 'ro', color = 'b', label='推定後', markersize=8)
+scatter_ana, = ax.plot([], [], [], 'ro', color = 'b', label='after_estimation', markersize=8)
 line_ana, = ax.plot([], [], [], 'r-',  color = 'b')  # 1本目の線
 
 # アニメーションの更新関数
