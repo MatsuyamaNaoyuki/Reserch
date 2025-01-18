@@ -54,6 +54,7 @@ def get_dynamixel(Motors):
     finally:
         thread_name = threading.current_thread().name
         results[thread_name] = motor_datas
+        print("dy")
 
 # daemon=Trueで強制終了
 
@@ -70,11 +71,12 @@ def get_magsensor(Ms):
     finally:
         thread_name = threading.current_thread().name
         results[thread_name] = Mag_datas
+        print("mag")
 
     
 
 def move(Motors):
-    with open('hawtomove20241204_192404.pickle', mode='br') as fi:
+    with open("C:\\Users\\shigf\\Program\\data\\howtomove_0109_2d20250116_190231.pickle", mode='br') as fi:
         change_angle = pickle.load(fi)
     
     for len in change_angle:
@@ -127,6 +129,7 @@ def get_motioncapture(Ms):
     finally:
         thread_name = threading.current_thread().name
         results[thread_name] = Motion_datas
+        print("motion")
         
         
 

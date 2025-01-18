@@ -181,22 +181,50 @@ def move_target_at_random(start_angles, goal):
     for i in range(len(goal)):
         changesteps.append(complement_between_with_maxchange(start_angles[i], goal[i], 5))
     max_length = max(len(row) for row in changesteps)
-    padded_array = np.array([row + [0] * (max_length - len(row)) for row in changesteps])
+    padded_array = np.array([row + [row[-1]]* (max_length - len(row)) for row in changesteps])
     transposed_list = [[padded_array[row][col] for row in range(len(padded_array))]
                    for col in range(max_length)]
     return transposed_list
 
+def move_and_return(goal):
+    data = []
+    data.extend(move_target_at_random([0,0,0,0], goal))
+    data.extend(move_target_at_random(goal, [0,0,0,0]))
+    return data
+    
 
 def randam_heimen():
     data = []
-    for i in range(10):
+    for i in range(1):
         data.extend(move_target_at_random([0,0,0,0], [0,0,250,0]))
         data.extend(move_target_at_random([0,0,250,0], [0,0,0,0]))
     return data
 
 
-motor_angle = randam_heimen()
+def randam_rittai():
+    data =[]
+    left = 0
+    right = 0
+    while left < 240:
+        left = left + random.uniform(15, 25)
+        data.extend(move_and_return([left, 0, 250, 0]))
+    while right < 240:
+        right = right + random.uniform(15, 25)
+        data.extend(move_and_return([0, right, 250, 0]))
+    return data
+
+        
+
+
+
+# motor_angle = randam_heimen()
+# print(motor_angle)
+motor_angle = []
+for i in range(5):
+    motor_angle.extend(randam_rittai())
 print(motor_angle)
 
-filename = 'hawtomove'
+
+
+filename = 'C:\\Users\\shigf\\Program\\data\\howtomove_0117_3d'
 myfunction.wirte_pkl(motor_angle, filename)

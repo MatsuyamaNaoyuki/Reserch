@@ -8,12 +8,13 @@ from datetime import datetime
 class MagneticSensor:
     def __init__(self):
         self.arduino = serial.Serial('COM6', 115200, timeout=1)
-        self.datanum = 9  #センサーの数を変えるときはここ
+        self.datanum = 10  #センサーの数を変えるときはここ
         self.datas = []
 
     #Arduinoから値を受け取って返り値で返す
     def get_value(self):
         rowvalue = "///////////////////////////////////////////////////////////////////"
+
         while rowvalue.count("/") != self.datanum - 1:
 
             self.arduino.reset_input_buffer()  # 入力バッファをクリア
@@ -43,4 +44,6 @@ class MagneticSensor:
 
 
         
-
+# mag = MagneticSensor()
+# A = mag.get_value()
+# print(A)
