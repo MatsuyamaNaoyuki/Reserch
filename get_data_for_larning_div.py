@@ -42,7 +42,7 @@ def init_motion_capture():
         
 def get_dynamixel(Motors):
     motor_datas = []
-    filepath = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\0120_fast_3d\\motor_"
+    filepath = "C:\\Users\\shigf\\Program\\data\\0120_3d_fast\\motor_"
     filenumber = 1
     i = 0
     try:
@@ -71,7 +71,7 @@ def get_dynamixel(Motors):
 
 def get_magsensor(Ms):
     Mag_datas = []
-    filepath = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\0120_fast_3d\\mag_"
+    filepath = "C:\\Users\\shigf\\Program\\data\\0120_3d_fast\\mag_"
     filenumber = 1
     i = 0
     try:
@@ -98,7 +98,7 @@ def get_magsensor(Ms):
     
 
 def move(Motors):
-    with open("C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\0120_fast_3d\\houtomove_3d_fast20250120_175436.pickle", mode='br') as fi:
+    with open("C:\\Users\\shigf\\Program\\data\\0120_3d_fast\\howtomove_0120_3d20250120_202215.pickle", mode='br') as fi:
         change_angle = pickle.load(fi)
     len_angle = len(change_angle)
     print(change_angle)
@@ -147,8 +147,7 @@ def py_data_func(pFrameOfMocapData, pUserData):
 
 def get_motioncapture(Ms):
     Motion_datas = []
-    filepath = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\0120_fast_3d\\mc_"
-    filenumber = 1
+    filepath = "C:\\Users\\shigf\\Program\\data\\0120_3d_fast\\mc_"
     i = 0
     try:
         while not stop_event.is_set():  # stop_eventがセットされるまでループ\

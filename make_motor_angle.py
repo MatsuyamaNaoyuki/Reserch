@@ -213,18 +213,30 @@ def randam_rittai():
         data.extend(move_and_return([0, right, 250, 0]))
     return data
 
-        
-def randam_rittai():
+
+def generate_l_and_c():
+    while True:
+        l = random.randint(0, 249)
+        r = random.randint(0, 249)
+        if l + r > 250:
+            return l, r
+def randam_rittai_ver0120():
     data =[]
-    left = 0
-    right = 0
-    while left < 240:
-        left = left + random.uniform(15, 25)
-        data.extend(move_and_return([left, 0, 250, 0]))
-    while right < 240:
-        right = right + random.uniform(15, 25)
+    
+    l_or_r = random.choice(["left", "right"])
+    if l_or_r == "left":
+        left, centor = generate_l_and_c()
+        data.extend(move_and_return([left, 0, centor, 0]))
+        data.extend([[0, 0, 0, 0]])
+    else:
+        right, centor = generate_l_and_c()
         data.extend(move_and_return([0, right, 250, 0]))
+        data.extend([[0, 0, 0, 0]])
     return data
+        
+            
+        
+    
 
 
 def randam_rittai_fast():
@@ -242,6 +254,8 @@ def randam_rittai_fast():
     return data
 
 
+
+
 # motor_angle = randam_heimen()
 # print(motor_angle)
 motor_angle = []
@@ -251,5 +265,5 @@ print(motor_angle)
 
 
 
-filename = 'C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\0120_fast_3d\\houtomove_3d_fast'
+filename = 'C:\\Users\\shigf\\Program\\data\\howtomove_0120_3d'
 myfunction.wirte_pkl(motor_angle, filename)
