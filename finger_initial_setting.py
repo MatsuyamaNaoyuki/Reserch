@@ -27,6 +27,6 @@ Motors.back_to_initial_position()
 
 # with open(filename, 'w',newline="") as f:
 #     writer = csv.writer(f)
-#     writer.writerows(Mc.datas)tt
+#     writer.writerows(Mc.datas)ttqqw
 
 

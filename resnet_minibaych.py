@@ -8,6 +8,7 @@ from torch.utils.data import DataLoader
 from myclass import myfunction
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 import matplotlib.pyplot as plt
+import keyboard
 
 class ResNetRegression(nn.Module):
     def __init__(self, input_dim, output_dim):
@@ -114,33 +115,36 @@ start = time.time()  # 現在時刻（処理開始前）を取得
 record_train_loss = []
 record_test_loss = []
 
-for epoch in range(num_epochs):
-    print(epoch)
-    train_loss = train(model, train_loader)
-    test_loss = test(model, test_loader)
+
+try:
+    for epoch in range(num_epochs):
+        print(epoch)
+        train_loss = train(model, train_loader)
+        test_loss = test(model, test_loader)
 
 
-    record_train_loss.append(train_loss)
-    record_test_loss.append(test_loss)
+        record_train_loss.append(train_loss)
+        record_test_loss.append(test_loss)
 
-    if epoch%10 == 0:
-        # modelの保存を追加
-        dir_name = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\"
-        filename = '3d_model_epoch' + str(epoch)+"_"
-        filename = dir_name + filename
-        myfunction.save_model(model, filename)
-        print(f"epoch={epoch}, train:{train_loss:.5f}, test:{test_loss:.5f}")
+        if epoch%10 == 0:
+            # modelの保存を追加
+            dir_name = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\"
+            filename = '3d_model_epoch' + str(epoch)+"_"
+            filename = dir_name + filename
+            myfunction.save_model(model, filename)
+            print(f"epoch={epoch}, train:{train_loss:.5f}, test:{test_loss:.5f}")
+        if keyboard.is_pressed('q'):
+            print("Training stopped by user.")
+            break
+except KeyboardInterrupt:
+    print("finish")
 
 
-
-myfunction.wirte_pkl(record_test_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\01183d\\3d_testloss")
-myfunction.wirte_pkl(record_train_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\01183d\\3d_trainloss")
+myfunction.wirte_pkl(record_test_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\3d_testloss")
+myfunction.wirte_pkl(record_train_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\3d_trainloss")
 
 plt.plot(range(len(record_train_loss)), record_train_loss, label="Train")
 plt.plot(range(len(record_test_loss)), record_test_loss, label="Test")
-
-
-
 
 
 plt.legend()

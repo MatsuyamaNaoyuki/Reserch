@@ -15,7 +15,7 @@ __version__ = "3.0.0.0"
 
 if ('mingw' in get_platform()) or ('win' in get_platform()):
   if (maxsize > 2**32) == True:
-    _dx2lib = WinDLL('C:\\Users\\shigf\\Program\\DXhub\\package\\dx2lib_x64.dll')
+    _dx2lib = WinDLL('C:\\Users\\WRS\\Desktop\\Matsuyama\\Reserch\\package\\dx2lib_x64.dll')
   else:
     _dx2lib = WinDLL('./dx2lib_x32.dll')
 else:

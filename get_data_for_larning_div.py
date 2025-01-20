@@ -42,7 +42,7 @@ def init_motion_capture():
         
 def get_dynamixel(Motors):
     motor_datas = []
-    filepath = "C:\\Users\\shigf\\Program\\data\\0117\\motor_"
+    filepath = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\0120_fast_3d\\motor_"
     filenumber = 1
     i = 0
     try:
@@ -71,7 +71,7 @@ def get_dynamixel(Motors):
 
 def get_magsensor(Ms):
     Mag_datas = []
-    filepath = "C:\\Users\\shigf\\Program\\data\\0117\\mag_"
+    filepath = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\0120_fast_3d\\mag_"
     filenumber = 1
     i = 0
     try:
@@ -98,7 +98,7 @@ def get_magsensor(Ms):
     
 
 def move(Motors):
-    with open("C:\\Users\\shigf\\Program\\data\\howtomove_0117_3d20250117_140223.pickle", mode='br') as fi:
+    with open("C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\howtomove_0117_3d20250117_140223.pickle", mode='br') as fi:
         change_angle = pickle.load(fi)
     len_angle = len(change_angle)
     print(change_angle)
@@ -109,7 +109,6 @@ def move(Motors):
         Motors.move_to_point(2, angles[1])
         Motors.move_to_point(3, angles[2])
         Motors.move_to_point(4, angles[3])
-        time.sleep(0.1)
         if (i +1) % 4000 == 0:
             write_pkl_event_motor.set()
             write_pkl_event_mag.set()
@@ -147,7 +146,7 @@ def py_data_func(pFrameOfMocapData, pUserData):
 
 def get_motioncapture(Ms):
     Motion_datas = []
-    filepath = "C:\\Users\\shigf\\Program\\data\\0117\\mc_"
+    filepath = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\0120_fast_3d\\mc_"
     filenumber = 1
     i = 0
     try:
