@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 
 
-with open("1204_100data_maybeOK\\motioncapture20241205_005155.pickle", mode='br') as fi:
+with open("C:\\Users\\shigf\\Program\\data\\0117\\mc_6_20250117_210214.pickle", mode='br') as fi:
   motiondata = pickle.load(fi)
 motiondata = [row[1:] for row in motiondata]
 motiondata = [row for row in motiondata if row[12] <= 10000]
@@ -12,7 +12,7 @@ motiondata = [row for row in motiondata if row[13] <= 10000]
 motiondata = [row for row in motiondata if row[14] <= 10000]
 
 
-grid_size = 1.0  # 1.0の精度で丸める
+grid_size = 10.0  # 1.0の精度で丸める
 rounded_data = [[round(x / grid_size) * grid_size for x in row] for row in motiondata]
 unique_data = [list(item) for item in set(tuple(row) for row in rounded_data)]
 print(len(rounded_data))
