@@ -146,6 +146,32 @@ class MyDynamixel():
         dx2.DXL_SetGoalAngles (self.dev, self.IDs,  gole_angles, len(self.IDs))
         dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.rotation_angles, len(self.IDs))
 
+
+    def move_to_points(self, angle_values ,times = 10):
+        dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.rotation_angles, len(self.IDs))
+        gole_angles = self.rotation_angles
+        setangle = []
+        #方向の調整
+        for i in range(len(angle_values)):
+            id = i + 1
+            if id ==  1 or id == 4:
+                gole_angles[i] = self.start_angles[i] + angle_values[i] * -1
+
+            else:
+                gole_angles[i] = self.start_angles[i] + angle_values[i]
+
+
+
+        # dx2.DXL_SetGoalAngles (self.dev, self.IDs,  gole_angles, len(self.IDs))
+        dx2.DXL_SetGoalAnglesAndTime (self.dev, self.IDs, gole_angles, len(self.IDs),times)
+        time.sleep(10)
+        # dx2.DXL_SetGoalAnglesAndVelocities(self.dev, self.IDs, gole_angles, len(self.IDs))
+
+        dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.rotation_angles, len(self.IDs))
+
+
+
+
     def move_goal_angles(self, anglevalues):
         dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.rotation_angles, len(self.IDs))
         gole_angles = self.rotation_angles
@@ -225,7 +251,13 @@ class MyDynamixel():
 
     # def measurement_force():
 
+
+
 # Motors = MyDynamixel()
+# move_to_poinsts(Motors, gole_angles= [10,10,10,10,0,0,0,0])
+
+
+
 # Motors.manual_move()
 # Motors.back_to_initial_position()
 # Motors.manual_move(record=True)

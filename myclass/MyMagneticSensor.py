@@ -7,7 +7,7 @@ from datetime import datetime
 
 class MagneticSensor:
     def __init__(self):
-        self.arduino = serial.Serial('COM6', 115200, timeout=1)
+        self.arduino = serial.Serial('COM4', 115200, timeout=1)
         self.datanum = 10  #センサーの数を変えるときはここ
         self.datas = []
 

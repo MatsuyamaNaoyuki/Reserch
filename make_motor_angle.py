@@ -214,17 +214,42 @@ def randam_rittai():
     return data
 
         
+def randam_rittai():
+    data =[]
+    left = 0
+    right = 0
+    while left < 240:
+        left = left + random.uniform(15, 25)
+        data.extend(move_and_return([left, 0, 250, 0]))
+    while right < 240:
+        right = right + random.uniform(15, 25)
+        data.extend(move_and_return([0, right, 250, 0]))
+    return data
 
+
+def randam_rittai_fast():
+    data =[]
+    left = 0
+    right = 0
+    while left < 240:
+        left = left + random.uniform(15, 25)
+        data.extend([[left, 0, 250, 0]])
+        data.extend([[0, 0, 0, 0]])
+    while right < 240:
+        right = right + random.uniform(15, 25)
+        data.extend([[0, right, 250, 0]])
+        data.extend([[0, 0, 0, 0]])
+    return data
 
 
 # motor_angle = randam_heimen()
 # print(motor_angle)
 motor_angle = []
 for i in range(5):
-    motor_angle.extend(randam_rittai())
+    motor_angle.extend(randam_rittai_fast())
 print(motor_angle)
 
 
 
-filename = 'C:\\Users\\shigf\\Program\\data\\howtomove_0117_3d'
+filename = 'C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\0120_fast_3d\\houtomove_3d_fast'
 myfunction.wirte_pkl(motor_angle, filename)
