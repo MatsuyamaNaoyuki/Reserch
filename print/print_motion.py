@@ -2,37 +2,35 @@ import pickle
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+import pandas as pd
+
+# CSVファイルの読み込み
+file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\modifydata20250118_142555.csv"
+data = pd.read_csv(file_path)
+selected_columns = data[['Mc5x', 'Mc5y', 'Mc5z']]
+print(selected_columns)
+print(selected_columns.dtypes)
 
 
-with open("1204_100data_maybeOK\\motioncapture20241205_005155.pickle", mode='br') as fi:
-  motiondata = pickle.load(fi)
-motiondata = [row[1:] for row in motiondata]
-motiondata = [row for row in motiondata if row[12] <= 10000]
-motiondata = [row for row in motiondata if row[13] <= 10000]
-motiondata = [row for row in motiondata if row[14] <= 10000]
 
+grid_size = 10.0  # 1.0の精度で丸める
+rounded_data = selected_columns.applymap(lambda x: round(x / grid_size) * grid_size)
 
-grid_size = 1.0  # 1.0の精度で丸める
-rounded_data = [[round(x / grid_size) * grid_size for x in row] for row in motiondata]
-unique_data = [list(item) for item in set(tuple(row) for row in rounded_data)]
+# ユニークなデータを抽出
+unique_data = rounded_data.drop_duplicates()
+
 print(len(rounded_data))
 print(len(unique_data))
 
-x = []
-y = []
-z = []
+x = unique_data['Mc5x'].tolist()
+y = unique_data['Mc5y'].tolist()
+z = unique_data['Mc5z'].tolist()
 
 
 
-for i in range(len(unique_data)):
-  x.append(unique_data[i][12])
-  y.append(unique_data[i][13])
-  z.append(unique_data[i][14])
-
-
-
-
-
+x.append(0)
+y.append(0)
+z.append(0)
 
 
 # 3Dプロット
@@ -47,5 +45,19 @@ ax.set_xlabel('X Label')
 ax.set_ylabel('Y Label')
 ax.set_zlabel('Z Label')
 
+max_range = max(
+    max(x) - min(x),
+    max(y) - min(y),
+    max(z) - min(z)
+) / 2.0
+
+mid_x = (max(x) + min(x)) / 2.0
+mid_y = (max(y) + min(y)) / 2.0
+mid_z = (max(z) + min(z)) / 2.0
+
+ax.set_box_aspect([1, 1, 1])  # 各軸の比率を同じに設定
+ax.set_xlim(mid_x - max_range, mid_x + max_range)
+ax.set_ylim(mid_y - max_range, mid_y + max_range)
+ax.set_zlim(mid_z - max_range, mid_z + max_range)
 # 表示
 plt.show()

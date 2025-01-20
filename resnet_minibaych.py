@@ -78,7 +78,7 @@ input_dim = 17
 output_dim = 12
 learning_rate = 0.001
 num_epochs = 500
-batch_size =128
+batch_size =64
 r = 0.8
 
 # モデルの初期化
@@ -119,6 +119,10 @@ record_test_loss = []
 try:
     for epoch in range(num_epochs):
         print(epoch)
+        end = time.time()  # 現在時刻（処理完了後）を取得
+        time_diff = end - start  # 処理完了後の時刻から処理開始前の時刻を減算する
+        print(time_diff)  # 処理にかかった時間データを使用
+
         train_loss = train(model, train_loader)
         test_loss = test(model, test_loader)
 
