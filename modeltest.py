@@ -74,12 +74,12 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 # print(minid)
 
 
-modelpath = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\onlymotor_tewntydata\\modi_margeMc_onlymotor_tewntydata_model_epoch310_20241218_022211.pth"
+modelpath = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\3d_model_epoch490_20250118_183611.pth"
 
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 
-filename = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\dataset_margemag_tewnty.csv"
+filename = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\modifydata20250118_142555.csv"
 x_data,y_data = myfunction.read_csv_to_torch(filename)
 x_data = x_data.to(device)
 y_data = y_data.to(device)

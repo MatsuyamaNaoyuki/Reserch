@@ -98,13 +98,13 @@ def data_marge_v2(motiondata, motordata, magsensor):
 
     return merge_df.values.tolist()
 
-with open('C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\magsensor20241205_005156.pickle', mode='br') as fi:
+with open('C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\mag_6_20250117_210214.pickle', mode='br') as fi:
   magsensor = pickle.load(fi)
 
-with open('C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\motor20241205_005156.pickle', mode='br') as fi:
+with open('C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\motor_6_20250117_210214.pickle', mode='br') as fi:
   motordata = pickle.load(fi)
 
-with open('C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\motioncapture20241205_005155.pickle', mode='br') as fi:
+with open('C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\mc_6_20250117_210214.pickle', mode='br') as fi:
   motiondata = pickle.load(fi)
   
 magdata = []
@@ -112,7 +112,6 @@ for magrow in magsensor:
     magdata.append(mag_data_change2(magrow))
 
 
-print(magdata[0])
 
 
 
@@ -126,5 +125,5 @@ margedata.insert(0, ["time","rotate1","rotate2","rotate3","rotate4","force1","fo
 
 
 
-# myfunction.wirte_pkl( margedata, filename = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\margedata_formag")
+myfunction.wirte_pkl( margedata, filename = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\margedata")
 

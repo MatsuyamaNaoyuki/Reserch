@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 data = []
-file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\margedata_formag20241217_230659.pickle"
+file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\margedata20250118_142555.pickle"
 
 
 data = pd.read_pickle(file_path)
@@ -65,7 +65,7 @@ df = df.drop(columns=['Mc1z'])
 # df = df.head(8670)
 df = df[df.index % 5 == 0]
 
-df.to_csv("C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\dataset_margemag_tewnty.csv", index=False)
+df.to_csv("C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\modifydata20250118_142555.csv", index=False)
 # print(df.columns)
 
 
