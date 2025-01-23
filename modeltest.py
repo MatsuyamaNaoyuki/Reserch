@@ -67,19 +67,19 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 
-# testloss = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\marge_for_Mag\\onlymotor_tewntydata\\modi_margeMc_onlymotor_tewntydata_testloss20241218_022550.pickle"
+# testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0120_sayuuhueru\3d_testloss20250121_121251.pickle"
 
 # minid = get_min_loss_epoch(testloss)
 
 # print(minid)
 
 
-modelpath = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\3d_model_epoch490_20250118_183611.pth"
+modelpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0120_sayuuhueru\3d_model_epoch480_20250121_121219.pth"
 
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 
-filename = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\modifydata20250118_142555.csv"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0120_sayuuhueru\modifydata20250121.csv"
 x_data,y_data = myfunction.read_csv_to_torch(filename)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
@@ -96,7 +96,7 @@ model_from_script.eval()
 dis_array = np.zeros((1000, 4))
 # print(dis_array)
 for i in range(1000):
-    sample_idx = random.randint(0,len(x_data))  # 推論したいサンプルのインデックス
+    sample_idx = random.randint(0,len(x_data)-1)  # 推論したいサンプルのインデックス
     single_sample = x_change[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     # 推論を行う（GPUが有効ならGPU上で実行）
     with torch.no_grad():  # 勾配計算を無効化

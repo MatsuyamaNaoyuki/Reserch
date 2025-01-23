@@ -5,7 +5,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import pandas as pd
 
 # CSVファイルの読み込み
-file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\modifydata20250118_142555.csv"
+file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\0120_sayuuhueru\\modifydata20250121.csv"
 data = pd.read_csv(file_path)
 selected_columns = data[['Mc5x', 'Mc5y', 'Mc5z']]
 print(selected_columns)

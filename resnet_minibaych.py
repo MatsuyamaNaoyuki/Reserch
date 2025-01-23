@@ -88,7 +88,7 @@ if torch.cuda.is_available():
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-filename = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\modifydata20250118_142555.csv"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_newcam\modifydata20250122.csv"
 x_data,y_data = myfunction.read_csv_to_torch(filename)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
@@ -132,7 +132,7 @@ try:
 
         if epoch%10 == 0:
             # modelの保存を追加
-            dir_name = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\"
+            dir_name = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_newcam\\"
             filename = '3d_model_epoch' + str(epoch)+"_"
             filename = dir_name + filename
             myfunction.save_model(model, filename)
@@ -144,8 +144,8 @@ except KeyboardInterrupt:
     print("finish")
 
 
-myfunction.wirte_pkl(record_test_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\3d_testloss")
-myfunction.wirte_pkl(record_train_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\3d_trainloss")
+myfunction.wirte_pkl(record_test_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_newcam\\3d_testloss")
+myfunction.wirte_pkl(record_train_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_newcam\\3d_trainloss")
 
 plt.plot(range(len(record_train_loss)), record_train_loss, label="Train")
 plt.plot(range(len(record_test_loss)), record_test_loss, label="Test")
