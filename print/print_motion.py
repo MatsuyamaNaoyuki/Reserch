@@ -5,7 +5,7 @@ from mpl_toolkits.mplot3d import Axes3D
 import pandas as pd
 
 # CSVファイルの読み込み
-file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\modifydata20250118_142555.csv"
+file_path = r"C:\Users\shigf\Program\data\sayuuhueruhazu\modifydata20250121.csv"
 data = pd.read_csv(file_path)
 selected_columns = data[['Mc5x', 'Mc5y', 'Mc5z']]
 print(selected_columns)
@@ -13,7 +13,7 @@ print(selected_columns.dtypes)
 
 
 
-grid_size = 10.0  # 1.0の精度で丸める
+grid_size = 1.0  # 1.0の精度で丸める
 rounded_data = selected_columns.applymap(lambda x: round(x / grid_size) * grid_size)
 
 # ユニークなデータを抽出

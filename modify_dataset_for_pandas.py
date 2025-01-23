@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 
 data = []
-file_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\margedata20250118_142555.pickle"
+file_path = "margedata20250123_124415.pickle"
 
 
 data = pd.read_pickle(file_path)
@@ -63,9 +63,9 @@ df = df.drop(columns=['Mc1y'])
 df = df.drop(columns=['Mc1z'])
 
 # df = df.head(8670)
-df = df[df.index % 5 == 0]
+# df = df[df.index  == 0]
 
-df.to_csv("C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\modifydata20250118_142555.csv", index=False)
+df.to_csv("modifydata20250122.csv", index=False)
 # print(df.columns)
 
 

@@ -1,8 +1,13 @@
-
+import pandas as pd
 import pickle
 
-c = [1,11,1,1]
-d = [2,2,2,2]
-# print(a + b)
-result = [a + b for a, b in zip(c, d)]
-print(result)
+file_path = r"margedata20250123_124415.pickle"
+
+
+
+df = pd.read_pickle(file_path)
+df = pd.DataFrame(df)
+print(len(df))
+# df = df.drop(df.columns[0], axis=1)
+# df = df[(df < 10000).all(axis=1)]
+# print(len(df))

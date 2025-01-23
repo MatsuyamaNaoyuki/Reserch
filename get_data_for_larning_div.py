@@ -42,7 +42,7 @@ def init_motion_capture():
         
 def get_dynamixel(Motors):
     motor_datas = []
-    filepath = "C:\\Users\\shigf\\Program\\data\\0120_3d_fast\\motor_"
+    filepath = "C:\\Users\\shigf\\Program\\data\\sentan_morecam\\motor_"
     filenumber = 1
     i = 0
     try:
@@ -71,7 +71,7 @@ def get_dynamixel(Motors):
 
 def get_magsensor(Ms):
     Mag_datas = []
-    filepath = "C:\\Users\\shigf\\Program\\data\\0120_3d_fast\\mag_"
+    filepath = "C:\\Users\\shigf\\Program\\data\\sentan_morecam\\mag_"
     filenumber = 1
     i = 0
     try:
@@ -98,19 +98,19 @@ def get_magsensor(Ms):
     
 
 def move(Motors):
-    with open("C:\\Users\\shigf\\Program\\data\\0120_3d_fast\\howtomove_0120_3d20250120_202215.pickle", mode='br') as fi:
+    with open("C:\\Users\\shigf\\Program\\data\\sentan\\howtomove_50020250121_122232.pickle", mode='br') as fi:
         change_angle = pickle.load(fi)
     len_angle = len(change_angle)
     print(change_angle)
     for i, angles in enumerate(change_angle):
         print(angles)
         print(str(i) + "/" +  str(len_angle))
-        Motors.move_to_points(angles)
+        Motors.move_to_points(angles, times = 7)
         # Motors.move_to_point(1, angles[0])
         # Motors.move_to_point(2, angles[1])
         # Motors.move_to_point(3, angles[2])
         # Motors.move_to_point(4, angles[3])
-        if (i +1) % 4000 == 0:
+        if (i +1) % 300 == 0:
             write_pkl_event_motor.set()
             write_pkl_event_mag.set()
             write_pkl_event_Mc.set()
@@ -147,7 +147,8 @@ def py_data_func(pFrameOfMocapData, pUserData):
 
 def get_motioncapture(Ms):
     Motion_datas = []
-    filepath = "C:\\Users\\shigf\\Program\\data\\0120_3d_fast\\mc_"
+    filepath = "C:\\Users\\shigf\\Program\\data\\sentan_morecam\\mc_"
+    filenumber = 1
     i = 0
     try:
         while not stop_event.is_set():  # stop_eventがセットされるまでループ\
