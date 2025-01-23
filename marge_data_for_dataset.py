@@ -98,13 +98,13 @@ def data_marge_v2(motiondata, motordata, magsensor):
 
     return merge_df.values.tolist()
 
-with open('C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\mag_6_20250117_210214.pickle', mode='br') as fi:
+with open("magsensor20250122_190028.pickle", mode='br') as fi:
   magsensor = pickle.load(fi)
 
-with open('C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\motor_6_20250117_210214.pickle', mode='br') as fi:
+with open("motor20250122_190028.pickle", mode='br') as fi:
   motordata = pickle.load(fi)
 
-with open('C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\mc_6_20250117_210214.pickle', mode='br') as fi:
+with open("motioncapture20250122_190027.pickle", mode='br') as fi:
   motiondata = pickle.load(fi)
   
 magdata = []
@@ -125,5 +125,5 @@ margedata.insert(0, ["time","rotate1","rotate2","rotate3","rotate4","force1","fo
 
 
 
-myfunction.wirte_pkl( margedata, filename = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\01183d\\margedata")
+myfunction.wirte_pkl( margedata, filename = "margedata")
 

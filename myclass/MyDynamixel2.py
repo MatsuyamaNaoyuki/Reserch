@@ -159,12 +159,10 @@ class MyDynamixel():
 
             else:
                 gole_angles[i] = self.start_angles[i] + angle_values[i]
-
-
-
+                
         # dx2.DXL_SetGoalAngles (self.dev, self.IDs,  gole_angles, len(self.IDs))
         dx2.DXL_SetGoalAnglesAndTime (self.dev, self.IDs, gole_angles, len(self.IDs),times)
-        time.sleep(10)
+        time.sleep(times)
         # dx2.DXL_SetGoalAnglesAndVelocities(self.dev, self.IDs, gole_angles, len(self.IDs))
 
         dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.rotation_angles, len(self.IDs))
@@ -245,32 +243,230 @@ class MyDynamixel():
         now_angle.insert(0, now_time)
         self.anglerecord.append(now_angle)
 
+#---------------------------------------------------------------
 
 
-    # def measurement_rotation_angle():
+# class MyDynamixel:
+#     def __init__(self):
+#         self.IDs = (ctypes.c_uint8 * 4)(1, 2, 3, 4)
+#         self.dev = None
+#         self._connect()
 
-    # def measurement_force():
+#         if self.dev is not None:
+#             # ID一覧分のDynamixelを検索しモデル名を表示
+#             for id in self.IDs:
+#                 try:
+#                     model_name = dx2.DXL_GetModelInfo(self.dev, id).contents.name.decode()
+#                     print(id, model_name)
+#                 except Exception as e:
+#                     print(f"Failed to get model info for ID {id}: {e}")
+#         else:
+#             print('Could not open COM port.')
+
+#         # ID一覧分のDynamixelをMultiTurnモード=4に変更
+#         dx2.DXL_SetOperatingModesEquival(self.dev, self.IDs, len(self.IDs), 4)
+#         # ID一覧分のDynamixelをトルクディスエーブル
+#         dx2.DXL_SetTorqueEnablesEquival(self.dev, self.IDs, len(self.IDs), True)
+#         self.rotation_angles = (ctypes.c_double * len(self.IDs))()
+#         self.start_angles = (ctypes.c_double * len(self.IDs))()
+#         self.force = (ctypes.c_double * len(self.IDs))()
+#         dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.start_angles, len(self.IDs))
+#         self.anglerecord = []
+
+#     def _connect(self):
+#         """
+#         Dynamixel デバイスに接続するヘルパーメソッド
+#         """
+#         while True:
+#             try:
+#                 self.dev = dx2.DX2_OpenPort(setting.COMPort, setting.Baudrate)
+#                 if self.dev is not None:
+#                     print("Successfully connected to Dynamixel.")
+#                     return
+#                 else:
+#                     raise RuntimeError("Failed to open COM port.")
+#             except Exception as e:
+#                 print(f"Connection error: {e}. Retrying in 2 seconds...")
+#                 time.sleep(2)
+
+#     def _reconnect(self):
+#         """
+#         デバイスが失敗した場合に再接続する
+#         """
+#         print("Reconnecting to Dynamixel...")
+#         self._connect()
+#         if self.dev is not None:
+#         # 再接続後にモーターを初期化する
+#             dx2.DXL_SetOperatingModesEquival(self.dev, self.IDs, len(self.IDs), 4)  # モード設定
+#             dx2.DXL_SetTorqueEnablesEquival(self.dev, self.IDs, len(self.IDs), True)  # トルク有効化
+#             print("Reconnected and reinitialized the device.")
+#         else:
+#             print("Failed to reconnect.")
+#     @staticmethod
+#     def _handle_exception(func):
+#         """
+#         例外処理をラップするデコレータ
+#         """
+#         def wrapper(self, *args, **kwargs):
+#             try:
+#                 return func(self, *args, **kwargs)  # 元のメソッドを実行
+#             except Exception as e:
+#                 print(f"Error in {func.__name__}: {e}. Reconnecting...")
+#                 self._reconnect()  # 再接続
+#                 return func(self, *args, **kwargs)  # 再実行
+#         return wrapper
+    
+#     @_handle_exception
+#     def set_start_angle(self):
+#         self.start_angles = (ctypes.c_double * len(self.IDs))()
+#         dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.start_angles, len(self.IDs))
+
+#     @_handle_exception
+#     def get_present_current(self, id):
+#         nowforce = (ctypes.c_double)()
+#         dx2.DXL_GetPresentCurrent(self.dev, id, nowforce)
+#         if id == 1 or id == 4:
+#             nowforce.value = nowforce.value * -1
+#         return nowforce
+
+#     @_handle_exception
+#     def get_present_currents(self):
+#         nowforce = (ctypes.c_double)()
+#         nowforces = []
+#         for id in self.IDs:
+#             dx2.DXL_GetPresentCurrent(self.dev, id, nowforce)
+#             if id == 1 or id == 4:
+#                 nowforce.value = nowforce.value * -1
+#             nowforces.append(nowforce.value)
+#         return nowforces
+    
+#     @_handle_exception
+#     def get_present_angles(self): #スタートとの角度の差を計算
+#         now_angles = (ctypes.c_double * len(self.IDs))()
+#         now_angles_list = []
+#         dx2.DXL_GetPresentAngles(self.dev, self.IDs, now_angles, len(self.IDs))
+#         if self.start_angles == None:
+#             raise SyntaxError("Do back to initial potiosn")
+#         for id in self.IDs:
+#             angle = now_angles[id-1] - self.start_angles[id-1]
+#             if id == 1 or id == 4:
+#                 angle = angle * -1
+#             now_angles_list.append(angle)
+#         return now_angles_list
+    
+#     @_handle_exception
+#     def move(self, id, angle_displacement):
+#         idi = id - 1
+#         dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.rotation_angles, len(self.IDs))
+#         gole_angles = self.rotation_angles
+
+#         if id == 1 or id == 4:
+#             setangle = angle_displacement * -1
+#         else:
+#             setangle = angle_displacement
+
+#         gole_angles[idi] = gole_angles[idi] + setangle
+#         dx2.DXL_SetGoalAngles(self.dev, self.IDs, gole_angles, len(self.IDs))
+
+
+#     @_handle_exception
+    # def move_to_points(self, angle_values ,times = 10):
+    #     dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.rotation_angles, len(self.IDs))
+    #     gole_angles = self.rotation_angles
+    #     setangle = []
+    #     #方向の調整
+    #     for i in range(len(angle_values)):
+    #         id = i + 1
+    #         if id ==  1 or id == 4:
+    #             gole_angles[i] = self.start_angles[i] + angle_values[i] * -1
+
+    #         else:
+    #             gole_angles[i] = self.start_angles[i] + angle_values[i]
 
 
 
-# Motors = MyDynamixel()
-# move_to_poinsts(Motors, gole_angles= [10,10,10,10,0,0,0,0])
+#         # dx2.DXL_SetGoalAngles (self.dev, self.IDs,  gole_angles, len(self.IDs))
+#         dx2.DXL_SetGoalAnglesAndTime (self.dev, self.IDs, gole_angles, len(self.IDs),times)
+#         time.sleep(times)
+#         # dx2.DXL_SetGoalAnglesAndVelocities(self.dev, self.IDs, gole_angles, len(self.IDs))
 
+#         dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.rotation_angles, len(self.IDs))
 
+#     def manual_move(self, record = False):
+#         key = ''
+#         kb = kbhit.KBHit()
+#         while key != 'p':   # 'p'が押されると終了  
+#             if kb.kbhit():
+#                 key = kb.getch()
+#         # ' '(スペース)を押す度にトルクイネーブルをトグル
+#                 if key =='q':  
+#                     self.move(1, 10)
+#                 if key =='w':  
+#                     self.move(2, 10)
+#                 if key =='e':  
+#                     self.move(3, 10)
+#                 if key =='r':  
+#                     self.move(4, 10)
+#                 if key =='a':  
+#                     self.move(1, -10)
+#                 if key =='s':  
+#                     self.move(2, -10)
+#                 if key =='d':  
+#                     self.move(3, -10)
+#                 if key =='f':  
+#                     self.move(4, -10)
+#                 if key =='t':  
+#                     self.move(1, 100)
+#                 if key =='y':  
+#                     self.move(2, 100)
+#                 if key =='u':  
+#                     self.move(3, 100)
+#                 if key =='i':  
+#                     self.move(4, 100)
+#                 if key =='g':  
+#                     self.move(1, -100)
+#                 if key =='h':  
+#                     self.move(2, -100)
+#                 if key =='j':  
+#                     self.move(3, -100)
+#                 if key =='k':  
+#                     self.move(4, -100)
+#                 if record == True:
+#                     self.record_angle()
+#                 print(self.get_present_angles())
 
-# Motors.manual_move()
-# Motors.back_to_initial_position()
-# Motors.manual_move(record=True)
+#     def back_to_initial_position(self):
+#         dx2.DXL_SetTorqueEnablesEquival(self.dev, self.IDs, len(self.IDs), False)
+#         time.sleep(1)
+#         dx2.DXL_SetTorqueEnablesEquival(self.dev, self.IDs, len(self.IDs), True)
+#         for id in self.IDs:
+#             nowforce = self.get_present_current(id)
+#             if nowforce == 0.0:
+#                 dx2.DX2_ClosePort(self.dev)
+#                 self.dev = dx2.DX2_OpenPort(setting.COMPort, setting.Baudrate)
+#             while nowforce.value < 1:
+#                 self.move(id, 1)
+#                 time.sleep(0.1)
+#                 nowforce = self.get_present_current(id)
+#                 print(id, nowforce.value)
+#             self.move(id, -1)
+#         self.start_angles = (ctypes.c_double * len(self.IDs))()
+#         dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.start_angles, len(self.IDs))
+        
+#     def move(self, id, angle_displacement):
+#         idi = id - 1
+#         #現在の角度（内部）を取得
+#         dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.rotation_angles, len(self.IDs))
+#         gole_angles = self.rotation_angles
 
+#         #方向の調整
+#         if id ==  1 or id == 4:
+#             setangle = angle_displacement * -1
+#         else:
+#             setangle = angle_displacement
 
-# print(Motors.anglerecord)
-# with open('C:\\Users\\shigf\\Program\\DXhub\\data\\nosensor.csv', 'w',newline="") as f:
-#     writer = csv.writer(f)
-#     writer.writerows(Motors.anglerecord)
+#         gole_angles[idi] = gole_angles[idi] + setangle
+#         #実際に移動（内部角度を入力）
+#         dx2.DXL_SetGoalAngles (self.dev, self.IDs,  gole_angles, len(self.IDs))
+#         dx2.DXL_GetPresentAngles(self.dev, self.IDs, self.rotation_angles, len(self.IDs))
 
-# Motors.manual_move()
-# forces = Motors.get_present_PWMs()
-# print(forces)
-# Motors.back_to_initial_position()
-# angles = Motors.get_present_angles()
-# print(angles)

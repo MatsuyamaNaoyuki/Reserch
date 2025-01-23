@@ -21,7 +21,7 @@ Motors.back_to_initial_position()
 
 
 
-# filename = 'nosensor_Mc'
+# filename = 'nosensor_Mc'q
 # now = datetime.datetime.now()
 # filename = os.path.dirname(__file__) +"\\" + filename + now.strftime('%Y%m%d_%H%M%S') + '.csv'
 

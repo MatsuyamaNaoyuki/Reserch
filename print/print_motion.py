@@ -13,7 +13,7 @@ print(selected_columns.dtypes)
 
 
 
-grid_size = 10.0  # 1.0の精度で丸める
+grid_size = 1.0  # 1.0の精度で丸める
 rounded_data = selected_columns.applymap(lambda x: round(x / grid_size) * grid_size)
 
 # ユニークなデータを抽出

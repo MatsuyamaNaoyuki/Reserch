@@ -220,17 +220,19 @@ def generate_l_and_c():
         r = random.randint(0, 249)
         if l + r > 250:
             return l, r
+        
+        
 def randam_rittai_ver0120():
     data =[]
     
     l_or_r = random.choice(["left", "right"])
     if l_or_r == "left":
         left, centor = generate_l_and_c()
-        data.extend(move_and_return([left, 0, centor, 0]))
+        data.extend([[left, 0, centor, 0]])
         data.extend([[0, 0, 0, 0]])
     else:
         right, centor = generate_l_and_c()
-        data.extend(move_and_return([0, right, 250, 0]))
+        data.extend([[0, right, centor, 0]])
         data.extend([[0, 0, 0, 0]])
     return data
         
@@ -254,16 +256,24 @@ def randam_rittai_fast():
     return data
 
 
+def test():
+    data =[]
+
+    data.extend([[0, 0, 250, 0]])
+    data.extend([[0, 0, 0, 0]])
+
+    return data
 
 
 # motor_angle = randam_heimen()
 # print(motor_angle)
 motor_angle = []
-for i in range(5):
-    motor_angle.extend(randam_rittai_fast())
+for i in range(500):
+    motor_angle.extend(randam_rittai_ver0120())
+# motor_angle.extend(test())
 print(motor_angle)
 
 
 
-filename = 'C:\\Users\\shigf\\Program\\data\\howtomove_0120_3d'
+filename = 'C:\\Users\\shigf\\Program\\data\\sentan\\howtomove_500'
 myfunction.wirte_pkl(motor_angle, filename)
