@@ -175,9 +175,9 @@ df = df.drop(columns=['Mc1y'])
 df = df.drop(columns=['Mc1z'])
 
 # df = df.head(8670)
-# df = df[df.index  == 0]
+# df = df[df.index  % 10 == 0]
 
-filename = "modifydata"
+filename = "modifydata_10%"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'

@@ -237,7 +237,7 @@ def read_csv_to_torch(filename, motor_angle, motor_force, magsensor):
 
 def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
     pickle_file_path = filename
-    df = pd.read_csv(pickle_file_path)
+    df = pd.read_pickle(pickle_file_path)
 
     #説明変数と目的変数に分離
 

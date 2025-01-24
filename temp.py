@@ -15,22 +15,17 @@ import os, pickle
 
 
 # 指定するディレクトリ
-search_dir = os.path.dirname(os.path.abspath(__file__))
 
-# 'magsensor' を含む .pickle ファイルを検索
-def find_pickle_files(directory, keyword):
-    matched_files = []
-    for root, dirs, files in os.walk(directory):
-        for file in files:
-            if keyword in file and file.endswith('.pickle'):
-                matched_files.append(os.path.join(root, file))
-    return matched_files
+motor_angle = True
+motor_force = True
+magsensor = False
+result_dir = r"sentan_morecam\angle_and_force"
+data_name = r"modifydata20250122.csv"
+resume_training = False  # 再開したい場合は True にする
+csv = True
 
-# ファイルを検索
-pickle_files = find_pickle_files(search_dir, "magsensor")
 
-# 検索結果の確認
-if not pickle_files:
-    print("該当するファイルが見つかりませんでした。")
-else:
-    print(f"見つかったファイル: {pickle_files}")
+x_data,y_data = myfunction.read_pickle_to_torch("modifydata20250124_154111.pickle", motor_angle, motor_force, magsensor)
+
+print(f"x_data = {x_data}")
+print(f"y_data = {y_data}")

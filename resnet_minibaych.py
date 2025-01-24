@@ -130,7 +130,7 @@ filename = os.path.join(filename, data_name)
 if csv:
     x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
 else:
-    x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, )
+    x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
 print(x_data[0])
