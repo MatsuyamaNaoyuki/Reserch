@@ -13,14 +13,14 @@ half_len_df1 = len(df1) // 2
 half_len_df2 = len(df2) // 2
 
 # 前半分の行を取得
-df1_half = df1.iloc[half_len_df1:]
-df2_half = df2.iloc[half_len_df2:]
+df1_half = df1.iloc[:half_len_df1]
+df2_half = df2.iloc[:half_len_df2]
 
 # データフレームを結合
 merged_df = pd.concat([df1_half, df2_half], ignore_index=True)
 
 # 結果を表示
-print(merged_df)
+df = merged_df[merged_df.index  % 10 == 0]
 
-output_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan&syougai\modifydata20250123_back"
-merged_df.to_csv(output_path, index=False)
+output_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan&syougai\modifydata10per_20250123.pickle"
+merged_df.to_pickle(output_path)
