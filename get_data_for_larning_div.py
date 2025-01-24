@@ -216,13 +216,6 @@ for key, value in results.items():
 
 
 
-for key, value in results.items():
-    filename = key
-    now = datetime.datetime.now()
-    filename = os.path.dirname(__file__) +"\\" + filename + now.strftime('%Y%m%d_%H%M%S') + '.csv'
-    with open(filename, 'w',newline="") as f:
-        writer = csv.writer(f)
-        writer.writerows(value)
-    
+
 
 print("Results:", results)
