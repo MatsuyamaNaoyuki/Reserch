@@ -235,6 +235,37 @@ def read_csv_to_torch(filename, motor_angle, motor_force, magsensor):
     
     return(tensor_data_x,tensor_data_y)
 
+def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
+    pickle_file_path = filename
+    df = pd.read_csv(pickle_file_path)
+
+    #説明変数と目的変数に分離
+
+    input_col = []
+    if motor_angle:
+        input_col.extend(['rotate1','rotate2','rotate3','rotate4'])
+    if motor_force:
+        input_col.extend(['force1','force2','force3','force4'])
+    if magsensor:
+        input_col.extend(['sensor1','sensor2','sensor3','sensor4','sensor5','sensor6','sensor7','sensor8','sensor9'])
+
+    x_value = df.loc[:, input_col]
+    y_value = df.iloc[:, 18:]
+
+
+    # データを NumPy 配列に変換してから PyTorch テンソルに変換
+    # np_x_value= x_value.values  # NumPy 配列に変換
+    # np_y_value= y_value.values
+
+    np_x_value= x_value.to_numpy().astype("float32")  # NumPy 配列に変換
+    np_y_value= y_value.to_numpy().astype("float32")
+
+    tensor_data_x = torch.tensor(np_x_value, dtype=torch.float32)
+    tensor_data_y = torch.tensor(np_y_value, dtype=torch.float32)
+    
+    return(tensor_data_x,tensor_data_y)
+
+
 
 
 def save_model(model, filename):
