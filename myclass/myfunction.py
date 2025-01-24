@@ -263,6 +263,29 @@ def wirte_pkl(data, filename):
         pickle.dump(data, fo)
     
 
-def add_path(path1, path2):
-    path = path1 + "\\" + path2
-    return path
+
+
+
+def load_pickle(filename):
+    with open(filename, mode='br') as fi:
+        data = pickle.load(fi)
+    return data
+
+def find_pickle_files(keyword, directory=None):
+    if directory is None:  # directoryがNoneの場合にデフォルト値を設定
+        directory = os.path.dirname(os.path.abspath(__file__))
+        directory = os.path.dirname(directory)
+
+    matched_files = []
+    for root, dirs, files in os.walk(directory):
+        for file in files:
+            if keyword in file and file.endswith('.pickle'):
+                matched_files.append(os.path.join(root, file))
+    
+    # 検索結果のチェック
+    if not matched_files:
+        raise FileNotFoundError(f"'{keyword}' を含む .pickle ファイルが見つかりませんでした。")
+    elif len(matched_files) > 1:
+        raise ValueError(f"複数のファイルが見つかりました: {matched_files}")
+    
+    return matched_files[0]  # 1つだけの場合はそのファイルを返す
