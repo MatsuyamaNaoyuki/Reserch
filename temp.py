@@ -1,13 +1,25 @@
+import time
+#resnetを実装したもの
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision.models import resnet18
+from torch.utils.data import DataLoader
+from myclass import myfunction
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+import matplotlib.pyplot as plt
+import random
+import numpy as np
 import pandas as pd
-import pickle
-
-file_path = r"margedata20250123_124415.pickle"
+import os
 
 
+result_dir = r"sentan_morecam"
+data_dir = r"modifydata20250122.csv"
+base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult"
+filename = os.path.join(base_path, result_dir)
+if len(result_dir.split(os.sep)) > 1:
+    filename = os.path.dirname(filename)
 
-df = pd.read_pickle(file_path)
-df = pd.DataFrame(df)
-print(len(df))
-# df = df.drop(df.columns[0], axis=1)
-# df = df[(df < 10000).all(axis=1)]
-# print(len(df))
+
+print(filename)

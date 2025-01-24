@@ -67,19 +67,19 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 
-# testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0120_sayuuhueru\3d_testloss20250121_121251.pickle"
+# testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan&syougai\3d_testloss20250124_073011.pickle"
 
 # minid = get_min_loss_epoch(testloss)
 
 # print(minid)
 
 
-modelpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0120_sayuuhueru\3d_model_epoch480_20250121_121219.pth"
+modelpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan&syougai\3d_model_epoch460_20250124_063704.pth"
 
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0120_sayuuhueru\modifydata20250121.csv"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan&syougai\modifydata20250123_back"
 x_data,y_data = myfunction.read_csv_to_torch(filename)
 x_data = x_data.to(device)
 y_data = y_data.to(device)

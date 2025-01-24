@@ -2,20 +2,25 @@ import pandas as pd
 
 
 
-# file1_path = r"C:\Users\shigf\Program\data\sentan_newcam\modifydata20250122.csv"
-# df1 = pd.read_csv(file1_path)
+file1_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\syougainasi\modifydata20250123.csv"
+df1 = pd.read_csv(file1_path)
 
-# file2_path = r"C:\Users\shigf\Program\data\sayuuhueruhazu\modifydata20250121.csv"
-# df2 = pd.read_csv(file2_path)
-
-# print(len(df2))
+file2_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\modifydata20250122.csv"
+df2 = pd.read_csv(file2_path)
 
 
-file2_path = r"C:\Users\shigf\Program\data\sentan_morecam\motioncapture20250122_190027.pickle"
-df2 = pd.read_pickle(file2_path)
+half_len_df1 = len(df1) // 2
+half_len_df2 = len(df2) // 2
 
-print(df2[0])
-# [datetime.datetime(2025, 1, 20, 22, 7, 37, 729549)
-# datetime.datetime(2025, 1, 20, 22, 19, 57, 432966)
+# 前半分の行を取得
+df1_half = df1.iloc[half_len_df1:]
+df2_half = df2.iloc[half_len_df2:]
 
-# [datetime.datetime(2025, 1, 22, 17, 10, 55, 860427)
+# データフレームを結合
+merged_df = pd.concat([df1_half, df2_half], ignore_index=True)
+
+# 結果を表示
+print(merged_df)
+
+output_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan&syougai\modifydata20250123_back"
+merged_df.to_csv(output_path, index=False)

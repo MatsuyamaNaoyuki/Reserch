@@ -205,13 +205,21 @@ def get_all_data(Motors, Motion, Magsensor):
 
 
 
-def read_csv_to_torch(filename):
+def read_csv_to_torch(filename, motor_angle, motor_force, magsensor):
     csv_file_path = filename
     df = pd.read_csv(csv_file_path)
 
     #説明変数と目的変数に分離
-    x_value = df.iloc[:, 1:18]
-    # x_value = df.iloc[:, [1,2,3,4,9,10,11,12,13,14,15,16,17]]
+
+    input_col = []
+    if motor_angle:
+        input_col.extend(['rotate1','rotate2','rotate3','rotate4'])
+    if motor_force:
+        input_col.extend(['force1','force2','force3','force4'])
+    if magsensor:
+        input_col.extend(['sensor1','sensor2','sensor3','sensor4','sensor5','sensor6','sensor7','sensor8','sensor9'])
+
+    x_value = df.loc[:, input_col]
     y_value = df.iloc[:, 18:]
 
 
@@ -231,7 +239,6 @@ def read_csv_to_torch(filename):
 
 def save_model(model, filename):
     now = datetime.datetime.now()
-
     filename =  filename + now.strftime('%Y%m%d_%H%M%S') + '.pth'
     model_scripted = torch.jit.script(model)
     model_scripted.save(filename)
@@ -255,3 +262,7 @@ def wirte_pkl(data, filename):
     with open(filename, 'wb') as fo:
         pickle.dump(data, fo)
     
+
+def add_path(path1, path2):
+    path = path1 + "\\" + path2
+    return path

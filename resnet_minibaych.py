@@ -1,4 +1,4 @@
-import time
+import time, os
 #resnetを実装したもの
 import torch
 import torch.nn as nn
@@ -70,11 +70,39 @@ def test(model, data_loader):
 
     return loss_mean
 
+def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, filepath):
+    checkpoint = {
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'record_train_loss': record_train_loss,
+        'record_test_loss': record_test_loss,
+    }
+    torch.save(checkpoint, filepath)
+    print(f"Checkpoint saved at epoch {epoch}.")
+
+# チェックポイントの読み込み関数
+def load_checkpoint(filepath):
+    checkpoint = torch.load(filepath)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    return checkpoint['epoch'], checkpoint['record_train_loss'], checkpoint['record_test_loss']
 
 
+
+#------------------------------------------------------------------------------------------------------------------------
+motor_angle = True
+motor_force = True
+magsensor = False
+result_dir = r"sentan_morecam\angle_and_force"
+data_name = r"modifydata20250122.csv"
+#------------------------------------------------------------------------------------------------------------------------
+
+base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult"
+result_dir = os.path.join(base_path, result_dir)
 
 # ハイパーパラメータ
-input_dim = 17
+input_dim = 4 * motor_angle + 4 * motor_force + 9 * magsensor
 output_dim = 12
 learning_rate = 0.001
 num_epochs = 500
@@ -88,8 +116,17 @@ if torch.cuda.is_available():
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_newcam\modifydata20250122.csv"
-x_data,y_data = myfunction.read_csv_to_torch(filename)
+
+
+
+
+
+if len(result_dir.split(os.sep)) > 1:
+    filename = os.path.dirname(result_dir)
+filename = os.path.join(filename, data_name)
+
+
+x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
 print(x_data[0])
@@ -112,12 +149,29 @@ start = time.time()  # 現在時刻（処理開始前）を取得
 
 
 # 学習ループ
-record_train_loss = []
-record_test_loss = []
+
+
+resume_training = False  # 再開したい場合は True にする
+checkpoint_path = os.path.join(result_dir, "3d_checkpoint.pth")
+# checkpoint_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_morecam\\3d_checkpoint.pth"
+
+resume_training = True
+if resume_training and os.path.exists(checkpoint_path):
+    checkpoint = torch.load(checkpoint_path)
+    model.load_state_dict(checkpoint['model_state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+    start_epoch = checkpoint['epoch'] + 1
+    record_train_loss = checkpoint['record_train_loss']
+    record_test_loss = checkpoint['record_test_loss']
+    print(f"Resuming training from epoch {start_epoch}.")
+else:
+    start_epoch = 0
+    record_train_loss = []
+    record_test_loss = []
 
 
 try:
-    for epoch in range(num_epochs):
+    for epoch in range(start_epoch, num_epochs):
         print(epoch)
         end = time.time()  # 現在時刻（処理完了後）を取得
         time_diff = end - start  # 処理完了後の時刻から処理開始前の時刻を減算する
@@ -132,21 +186,23 @@ try:
 
         if epoch%10 == 0:
             # modelの保存を追加
-            dir_name = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_newcam\\"
+
             filename = '3d_model_epoch' + str(epoch)+"_"
-            filename = dir_name + filename
+            filename = result_dir + filename
             myfunction.save_model(model, filename)
             print(f"epoch={epoch}, train:{train_loss:.5f}, test:{test_loss:.5f}")
         if keyboard.is_pressed('q'):
             print("Training stopped by user.")
             break
 except KeyboardInterrupt:
+    save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, checkpoint_path)
     print("finish")
 
+# myfunction.wirte_pkl(record_test_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_morecam\\3d_testloss")
+# myfunction.wirte_pkl(record_train_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_morecam\\3d_trainloss")
 
-myfunction.wirte_pkl(record_test_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_newcam\\3d_testloss")
-myfunction.wirte_pkl(record_train_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_newcam\\3d_trainloss")
-
+myfunction.wirte_pkl(record_test_loss, os.path.join(result_dir, "3d_testloss"))
+myfunction.wirte_pkl(record_train_loss, os.path.join(result_dir, "3d_trainloss"))
 plt.plot(range(len(record_train_loss)), record_train_loss, label="Train")
 plt.plot(range(len(record_test_loss)), record_test_loss, label="Test")
 
