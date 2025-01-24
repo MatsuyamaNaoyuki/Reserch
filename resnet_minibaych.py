@@ -96,6 +96,8 @@ motor_force = True
 magsensor = False
 result_dir = r"sentan_morecam\angle_and_force"
 data_name = r"modifydata20250122.csv"
+resume_training = False  # 再開したい場合は True にする
+csv = True
 #------------------------------------------------------------------------------------------------------------------------
 
 base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult"
@@ -125,8 +127,10 @@ if len(result_dir.split(os.sep)) > 1:
     filename = os.path.dirname(result_dir)
 filename = os.path.join(filename, data_name)
 
-
-x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
+if csv:
+    x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
+else:
+    x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, )
 x_data = x_data.to(device)
 y_data = y_data.to(device)
 print(x_data[0])
@@ -151,7 +155,6 @@ start = time.time()  # 現在時刻（処理開始前）を取得
 # 学習ループ
 
 
-resume_training = False  # 再開したい場合は True にする
 checkpoint_path = os.path.join(result_dir, "3d_checkpoint.pth")
 # checkpoint_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_morecam\\3d_checkpoint.pth"
 
