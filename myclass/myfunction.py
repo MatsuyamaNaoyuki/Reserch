@@ -295,12 +295,11 @@ def wirte_pkl(data, filename):
     
 
 
-
-
-def load_pickle(filename):
+def load_csv(filename):
     with open(filename, mode='br') as fi:
         data = pickle.load(fi)
     return data
+
 
 def find_pickle_files(keyword, directory=None):
     if directory is None:  # directoryがNoneの場合にデフォルト値を設定

@@ -67,20 +67,23 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 
-# testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan&syougai\3d_testloss20250124_073011.pickle"
+# testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use\3d_testloss20250123_162722.pickle"
 
 # minid = get_min_loss_epoch(testloss)
 
 # print(minid)
 
 
-modelpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan&syougai\3d_model_epoch460_20250124_063704.pth"
+modelpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use_norandom\3d_model_epoch20_20250125_155526.pth"
 
+motor_angle = True
+motor_force = True
+magsensor = True
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan&syougai\modifydata20250123_back"
-x_data,y_data = myfunction.read_csv_to_torch(filename)
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\big\modifydata_big20250127_184801.pickle"
+x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
 x_mean = x_data.mean()
@@ -96,6 +99,7 @@ model_from_script.eval()
 dis_array = np.zeros((1000, 4))
 # print(dis_array)
 for i in range(1000):
+    # sample_idx = random.randint(int(len(x_data) * 0.8 ),len(x_data)-1)  # 推論したいサンプルのインデックス
     sample_idx = random.randint(0,len(x_data)-1)  # 推論したいサンプルのインデックス
     single_sample = x_change[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     # 推論を行う（GPUが有効ならGPU上で実行）

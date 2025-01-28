@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torchvision.models import resnet18
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Subset
 from myclass import myfunction
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 import matplotlib.pyplot as plt
@@ -92,11 +92,12 @@ def load_checkpoint(filepath):
 
 #------------------------------------------------------------------------------------------------------------------------
 motor_angle = True
-motor_force = True
+motor_force = False
 magsensor = False
-result_dir = r"sentan_morecam\angle_and_force"
+
+result_dir = r"sentan_morecam\angle_norandam"
 data_name = r"modifydata20250122.csv"
-resume_training = True  # 再開したい場合は True にする
+resume_training = False  # 再開したい場合は True にする
 csv = True #今後Flaseに統一
 #------------------------------------------------------------------------------------------------------------------------
 
@@ -108,11 +109,12 @@ input_dim = 4 * motor_angle + 4 * motor_force + 9 * magsensor
 output_dim = 12
 learning_rate = 0.001
 num_epochs = 500
-batch_size =64
+batch_size =256
 r = 0.8
 
 # モデルの初期化
 model = ResNetRegression(input_dim=input_dim, output_dim=output_dim)
+
 if torch.cuda.is_available():
     model.cuda()
 criterion = nn.MSELoss()
@@ -130,10 +132,10 @@ filename = os.path.join(filename, data_name)
 if csv:
     x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
 else:
-    x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
+    x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
-print(x_data[0])
+print(len(x_data))
 print(y_data[0])
 
 x_data = (x_data - x_data.mean()) / x_data.std()
@@ -141,7 +143,19 @@ y_data = (y_data - y_data.mean()) / y_data.std()
 
 
 dataset = torch.utils.data.TensorDataset(x_data,y_data)
-train_dataset, test_dataset = torch.utils.data.random_split(dataset, [r,1-r])
+
+
+total_size = len(dataset)
+train_size = int(total_size * 0.8)  # 訓練データサイズ (80%)
+test_size = total_size - train_size  # テストデータサイズ (20%)
+
+# インデックスを固定で分割（最後の20%をテスト用に）
+train_indices = list(range(0, train_size))
+test_indices = list(range(train_size, total_size))
+
+train_dataset = Subset(dataset, train_indices)
+test_dataset = Subset(dataset, test_indices)
+# train_dataset, test_dataset = torch.utils.data.random_split(dataset, [r,1-r])
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
 
@@ -158,8 +172,10 @@ start = time.time()  # 現在時刻（処理開始前）を取得
 checkpoint_path = os.path.join(result_dir, "3d_checkpoint.pth")
 # checkpoint_path = "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_morecam\\3d_checkpoint.pth"
 
-resume_training = True
+
 if resume_training and os.path.exists(checkpoint_path):
+
+
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -190,7 +206,7 @@ try:
         if epoch%10 == 0:
             # modelの保存を追加
 
-            filename = '3d_model_epoch' + str(epoch)+"_"
+            filename = '\\3d_model_epoch' + str(epoch)+"_"
             filename = result_dir + filename
             myfunction.save_model(model, filename)
             print(f"epoch={epoch}, train:{train_loss:.5f}, test:{test_loss:.5f}")
