@@ -5,21 +5,23 @@ from mpl_toolkits.mplot3d import Axes3D
 import pandas as pd
 
 # CSVファイルの読み込み
-file_path = r"C:\Users\shigf\Program\data\sentan_newcam\modifydata20250122.csv"
+file_path = r"C:\Users\shigf\Program\data\sentan_test\modifydata_test20250127_184925.pickle"
 data = pd.read_csv(file_path)
 
 selected_columns = data[['Mc2x', 'Mc2y', 'Mc2z','Mc3x', 'Mc3y', 'Mc3z','Mc4x', 'Mc4y', 'Mc4z','Mc5x', 'Mc5y', 'Mc5z']]
 print(selected_columns)
 print(selected_columns.dtypes)
 
-
-
+lendata = len(data)
+selected_columns = selected_columns.iloc[::10]
+selected_columns = selected_columns.iloc[:1000]
 grid_size = 10.0  # 1.0の精度で丸める
 rounded_data = selected_columns.applymap(lambda x: round(x / grid_size) * grid_size)
 
 # ユニークなデータを抽出
-unique_data = rounded_data.drop_duplicates()
+# unique_data = rounded_data.drop_duplicates()
 
+unique_data = selected_columns
 print(len(rounded_data))
 print(len(unique_data))
 x2 = unique_data['Mc2x'].tolist()
@@ -52,17 +54,27 @@ fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
 # 点群をプロット
-ax.scatter(x2, y2, z2, c='r', marker='o', s=1)
-ax.scatter(x3, y3, z3, c='r', marker='o', s=1)
-ax.scatter(x4, y4, z4, c='r', marker='o', s=1)
-ax.scatter(x5, y5, z5, c='r', marker='o', s=1)
-for i in range(100):  # 各行のインデックス
+ax.scatter(x2, y2, z2, c='r', s=1)
+ax.scatter(x3, y3, z3, c='r', s=1)
+ax.scatter(x4, y4, z4, c='r', s=1)
+ax.scatter(x5, y5, z5, c='r', s=1)
+for i in range(1000):  # 各行のインデックス
+    ax.plot(
+        [x2[i], x3[i], x4[i], x5[i]],  # x座標をつなぐ
+        [y2[i], y3[i], y4[i], y5[i]],  # y座標をつなぐ
+        [z2[i], z3[i], z4[i], z5[i]],  # z座標をつなぐ
+        c='r'  # 線の色
+    )
+
+for i in range(700, 800):  # 各行のインデックス
     ax.plot(
         [x2[i], x3[i], x4[i], x5[i]],  # x座標をつなぐ
         [y2[i], y3[i], y4[i], y5[i]],  # y座標をつなぐ
         [z2[i], z3[i], z4[i], z5[i]],  # z座標をつなぐ
         c='b'  # 線の色
     )
+
+
 
 
 # ラベル付け
