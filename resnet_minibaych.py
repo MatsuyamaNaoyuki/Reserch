@@ -96,8 +96,8 @@ motor_force = True
 magsensor = False
 result_dir = r"sentan_morecam\angle_and_force"
 data_name = r"modifydata20250122.csv"
-resume_training = False  # 再開したい場合は True にする
-csv = True
+resume_training = True  # 再開したい場合は True にする
+csv = True #今後Flaseに統一
 #------------------------------------------------------------------------------------------------------------------------
 
 base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult"
