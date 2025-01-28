@@ -23,4 +23,4 @@ merged_df = pd.concat([df1_half, df2_half], ignore_index=True)
 df = merged_df[merged_df.index  % 10 == 0]
 
 output_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan&syougai\modifydata10per_20250123.pickle"
-merged_df.to_pickle(output_path)
+df.to_pickle(output_path)

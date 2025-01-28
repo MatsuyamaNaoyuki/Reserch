@@ -12,20 +12,47 @@ import random
 import numpy as np
 import pandas as pd
 import os, pickle
+from myclass import myfunction
+
+
+def swap_columns(df, col1, col2):
+    """
+    指定した2つの列を入れ替える関数。
+
+    Parameters:
+        df (pd.DataFrame): データフレーム
+        col1 (str): 入れ替えたい1つ目の列名
+        col2 (str): 入れ替えたい2つ目の列名
+
+    Returns:
+        pd.DataFrame: 列を入れ替えた新しいデータフレーム
+    """
+    # 列の順序をリストとして取得
+    columns = list(df.columns)
+    
+    # 入れ替えたい列のインデックスを取得
+    idx1, idx2 = columns.index(col1), columns.index(col2)
+    
+    # 列を入れ替える
+    columns[idx1], columns[idx2] = columns[idx2], columns[idx1]
+    
+    # 新しい順序でデータフレームを再構築
+    return df[columns]
+
 
 
 # 指定するディレクトリ
-
-motor_angle = True
-motor_force = True
-magsensor = False
-result_dir = r"sentan_morecam\angle_and_force"
-data_name = r"modifydata20250122.csv"
-resume_training = False  # 再開したい場合は True にする
-csv = True
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\test\modifydata_test20250127_184925.pickle"
+df = pd.read_pickle(filename)
 
 
-x_data,y_data = myfunction.read_pickle_to_torch("modifydata20250124_154111.pickle", motor_angle, motor_force, magsensor)
+# columns = df.columns
 
-print(f"x_data = {x_data}")
-print(f"y_data = {y_data}")
+# print("列名を取得:")
+# print(columns)
+df = swap_columns(df, 'sensor1', 'sensor3')
+df = swap_columns(df, 'sensor4', 'sensor6')
+df = swap_columns(df, 'sensor7', 'sensor9')
+
+
+df.to_pickle('modifydata_test.pickle')
