@@ -217,9 +217,9 @@ def randam_rittai():
 def generate_l_and_c():
     while True:
         l = random.randint(0, 249)
-        r = random.randint(0, 249)
-        if l + r > 250:
-            return l, r
+        centor = random.randint(0, 249)
+        if l + centor > 250:
+            return l, centor
         
         
 def randam_rittai_ver0120():
