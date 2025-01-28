@@ -74,7 +74,7 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 # print(minid)
 
 
-modelpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use\3d_model_epoch130_20250123_161137.pth"
+modelpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use_norandom\3d_model_epoch20_20250125_155526.pth"
 
 motor_angle = True
 motor_force = True
@@ -82,8 +82,8 @@ magsensor = True
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 
-filename = r"C:\Users\WRS\Desktop\Matsuyama\Reserch\modifydata_test.pickle"
-x_data,y_data = myfunction.read_pickle_to_torch(filename, True, True, True)
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\big\modifydata_big20250127_184801.pickle"
+x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
 x_mean = x_data.mean()
