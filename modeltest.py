@@ -86,27 +86,6 @@ filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\currentOK0203\
 motor_angle = True
 motor_force = True
 magsensor = True
-test_data_path =  r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\big\modifydata_big20250127_184801.pickle"
-
-
-
-
-# -------------------------------------------------------------------------------------
-base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult"
-
-
-base_path = os.path.join(base_path, model_result_dir)
-testloss = os.path.join(base_path, testlossname)
-
-minid = get_min_loss_epoch(testloss)
-
-print(minid)
-epochname = "epoch" + str(minid)
-
-modelpath = myfunction.find_pickle_files(epochname, directory=base_path)
-
-
-
 
 #-----------------------------------------------------------------------------------------------------------------
 pickle = detect_file_type(filename)
