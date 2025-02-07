@@ -90,19 +90,19 @@ def load_checkpoint(filepath):
 
 
 
-#------------------------------------------------------------------------------------------------------------------------
+#---------------------------------------------------------------------------------- --------------------------------------
 motor_angle = True
-motor_force = False
-magsensor = False
+motor_force = True
+magsensor = True
 
-result_dir = r"sentan_morecam\angle_norandam"
-data_name = r"modifydata20250122.csv"
+original_result_dir = r"currentOK0203\correctmean_norandom"
+data_name = r"currentOK20250203_180002.pickle"
 resume_training = False  # 再開したい場合は True にする
-csv = True #今後Flaseに統一
+csv = False#今後Flaseに統一
 #------------------------------------------------------------------------------------------------------------------------
 
 base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult"
-result_dir = os.path.join(base_path, result_dir)
+result_dir = os.path.join(base_path, original_result_dir)
 
 # ハイパーパラメータ
 input_dim = 4 * motor_angle + 4 * motor_force + 9 * magsensor
@@ -125,10 +125,11 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 
 
-if len(result_dir.split(os.sep)) > 1:
+if len(original_result_dir.split(os.sep)) > 1:
     filename = os.path.dirname(result_dir)
-filename = os.path.join(filename, data_name)
-
+    filename = os.path.join(filename, data_name)
+else:
+    filename = os.path.join(result_dir, data_name)
 if csv:
     x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
 else:
@@ -138,24 +139,40 @@ y_data = y_data.to(device)
 print(len(x_data))
 print(y_data[0])
 
-x_data = (x_data - x_data.mean()) / x_data.std()
-y_data = (y_data - y_data.mean()) / y_data.std()
 
+x_mean = x_data.mean(dim=0, keepdim=True)
+x_std = x_data.std(dim=0, keepdim=True)
+y_mean = y_data.mean(dim=0, keepdim=True)
+y_std = y_data.std(dim=0, keepdim=True)
+
+scaler_data = {
+    'x_mean': x_mean.cpu().numpy(),  # GPUからCPUへ移動してnumpy配列へ変換
+    'x_std': x_std.cpu().numpy(),
+    'y_mean': y_mean.cpu().numpy(),
+    'y_std': y_std.cpu().numpy()
+}
+x_data = (x_data - x_data.mean(dim=0, keepdim=True)) / x_data.std(dim=0, keepdim=True)
+y_data = (y_data - y_data.mean(dim=0, keepdim=True)) / y_data.std(dim=0, keepdim=True)
+
+
+scaler_pass = os.path.join(result_dir, "scaler")
+# pickleファイルとして保存
+myfunction.wirte_pkl(scaler_data, scaler_pass)
 
 dataset = torch.utils.data.TensorDataset(x_data,y_data)
 
 
-total_size = len(dataset)
-train_size = int(total_size * 0.8)  # 訓練データサイズ (80%)
-test_size = total_size - train_size  # テストデータサイズ (20%)
+# total_size = len(dataset)
+# train_size = int(total_size * 0.8)  # 訓練データサイズ (80%)
+# test_size = total_size - train_size  # テストデータサイズ (20%)
 
-# インデックスを固定で分割（最後の20%をテスト用に）
-train_indices = list(range(0, train_size))
-test_indices = list(range(train_size, total_size))
+# # インデックスを固定で分割（最後の20%をテスト用に）
+# train_indices = list(range(0, train_size))
+# test_indices = list(range(train_size, total_size))
 
-train_dataset = Subset(dataset, train_indices)
-test_dataset = Subset(dataset, test_indices)
-# train_dataset, test_dataset = torch.utils.data.random_split(dataset, [r,1-r])
+# train_dataset = Subset(dataset, train_indices)
+# test_dataset = Subset(dataset, test_indices)
+train_dataset, test_dataset = torch.utils.data.random_split(dataset, [r,1-r])
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
 

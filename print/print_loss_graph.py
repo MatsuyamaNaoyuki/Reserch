@@ -28,36 +28,36 @@ def print_loss_graph(trainpath, testpath, graphname):
     yticklabels = ax.get_yticklabels()
 
     ax.set_title(graphname,fontsize=20)
-    ax.set_ylim(0,0.01)
+    ax.set_ylim(0,0.1)
     ax.set_xlim(0,500)
     ax.set_xlabel("epoch_number",fontsize=20)
     ax.set_ylabel("loss",fontsize=20)
     ax.set_xticklabels(xticklabels,fontsize=12)
-    ax.set_yticklabels(yticklabels,fontsize=12)
+    ax.set_yticklabels(yticklabels,fontsize=12)   
     plt.show()
 
 
 
-trainpath = r"C:\Users\shigf\Program\data\trainandtest\all_use_norandom_trainloss20250125_185903.pickle"
-testpath = r"C:\Users\shigf\Program\data\trainandtest\all_use_norandom_testloss20250125_185903.pickle"
+trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use\3d_trainloss20250123_162722.pickle"
+testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use\3d_testloss20250123_162722.pickle"
 graphname = "alluse"
 
 print_loss_graph(trainpath, testpath, graphname)
 
-trainpath = r"C:\Users\shigf\Program\data\trainandtest\angle_and_force_trainloss20250126_021042.pickle"
-testpath = r"C:\Users\shigf\Program\data\trainandtest\angle_and_force_testloss20250126_021042.pickle"
+trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\angle_and_force\3d_trainloss20250124_171755.pickle"
+testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\angle_and_force\3d_testloss20250124_171755.pickle"
 graphname = "angle_and_force"
 
 print_loss_graph(trainpath, testpath, graphname)
 
-trainpath = r"C:\Users\shigf\Program\data\trainandtest\angle_and_mag_norandam__trainloss20250126_232305.pickle"
-testpath = r"C:\Users\shigf\Program\data\trainandtest\angle_and_mag_norandam_testloss20250126_232305.pickle"
+trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\angle_and_mag\3d_trainloss20250124_131631.pickle"
+testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\angle_and_mag\3d_testloss20250124_131631.pickle"
 graphname = "angle_and_mag"
 
 print_loss_graph(trainpath, testpath, graphname)
 
-testpath = r"C:\Users\shigf\Program\data\trainandtest\force_and_mag_norandom_testloss20250127_024245.pickle"
-trainpath = r"C:\Users\shigf\Program\data\trainandtest\force_and_mag_norandom_trainloss20250127_024245.pickle"
-graphname = "force_and_mag"
+# testpath = r"C:\Users\shigf\Program\data\trainandtest\force_and_mag_norandom_testloss20250127_024245.pickle"
+# trainpath = r"C:\Users\shigf\Program\data\trainandtest\force_and_mag_norandom_trainloss20250127_024245.pickle"
+# graphname = "force_and_mag"
 
-print_loss_graph(trainpath, testpath, graphname)
+# print_loss_graph(trainpath, testpath, graphname)

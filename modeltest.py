@@ -11,6 +11,8 @@ import matplotlib.pyplot as plt
 import random
 import numpy as np
 import pandas as pd
+import os, sys
+from pathlib import Path
 
 def culc_gosa(prediction, ydata):
     dis_array = np.zeros(4)
@@ -29,7 +31,17 @@ def get_min_loss_epoch(file_path):
     minid = filter_testdf.idxmin()
     return minid.iloc[-1]
 
+def detect_file_type(filename):
+    # Pathオブジェクトで拡張子を取得
+    file_extension = Path(filename).suffix.lower()
 
+    # 拡張子に基づいてファイルタイプを判定
+    if file_extension == '.pickle':
+        return True
+    elif file_extension == '.csv':
+        return False
+    else:
+        return 'unknown'  # サポート外の拡張子
 
 
 class ResNetRegression(nn.Module):
@@ -66,45 +78,65 @@ if torch.cuda.is_available():
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
+#変える部分-----------------------------------------------------------------------------------------------------------------
 
-# testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use\3d_testloss20250123_162722.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\currentOK0203\correctmean_norandom\3d_testloss20250205_043927.pickle"
 
-# minid = get_min_loss_epoch(testloss)
-
-# print(minid)
-
-
-modelpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use_norandom\3d_model_epoch20_20250125_155526.pth"
-
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\currentOK0203\currentOK20250203_180002.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
 
-model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
+#-----------------------------------------------------------------------------------------------------------------
+pickle = detect_file_type(filename)
+testloss = Path(testloss)
+basepath = Path(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult")
 
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\big\modifydata_big20250127_184801.pickle"
-x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
+
+if pickle:
+    x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
+else:
+    x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
-x_mean = x_data.mean()
-x_std = x_data.std()
-y_mean = y_data.mean()
-y_std = y_data.std()
-x_change = (x_data - x_data.mean()) / x_data.std()
-y_change = (y_data - y_data.mean()) / y_data.std()
 
+
+
+
+resultdir = os.path.dirname(testloss)
+scaler_path = myfunction.find_pickle_files("scaler", resultdir)
+scaler_data = myfunction.load_pickle(scaler_path)
+x_mean = torch.tensor(scaler_data['x_mean']).to(device)
+x_std = torch.tensor(scaler_data['x_std']).to(device)
+y_mean = torch.tensor(scaler_data['y_mean']).to(device)
+y_std = torch.tensor(scaler_data['y_std']).to(device)
+x_change = (x_data - x_mean) / x_std
+y_change = (y_data - y_mean) / y_std
+
+
+
+
+#モデルのロード
+minid = str(get_min_loss_epoch(testloss))
+print(f"使用したephoch:{minid}")
+modelpath = myfunction.find_pickle_files(minid, directory=resultdir, extension='.pth')
+model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 model_from_script.eval()
+
+
 
 # x_data から 1 サンプルを取得（例: 0番目のサンプル）
 dis_array = np.zeros((1000, 4))
 # print(dis_array)
-for i in range(1000):
+for i in range(1):
     # sample_idx = random.randint(int(len(x_data) * 0.8 ),len(x_data)-1)  # 推論したいサンプルのインデックス
     sample_idx = random.randint(0,len(x_data)-1)  # 推論したいサンプルのインデックス
     single_sample = x_change[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     # 推論を行う（GPUが有効ならGPU上で実行）
     with torch.no_grad():  # 勾配計算を無効化
         prediction = model_from_script(single_sample)
+    print(prediction)
+    print(y_change[sample_idx])
     single_sample = single_sample * x_std + x_mean
     prediction = prediction * y_std + y_mean
     distance = culc_gosa(prediction.tolist()[0], y_data[sample_idx].tolist())

@@ -295,13 +295,13 @@ def wirte_pkl(data, filename):
     
 
 
-def load_csv(filename):
+def load_pickle(filename):
     with open(filename, mode='br') as fi:
         data = pickle.load(fi)
     return data
 
 
-def find_pickle_files(keyword, directory=None):
+def find_pickle_files(keyword, directory=None, extension = '.pickle'):
     if directory is None:  # directoryがNoneの場合にデフォルト値を設定
         directory = os.path.dirname(os.path.abspath(__file__))
         directory = os.path.dirname(directory)
@@ -309,7 +309,7 @@ def find_pickle_files(keyword, directory=None):
     matched_files = []
     for root, dirs, files in os.walk(directory):
         for file in files:
-            if keyword in file and file.endswith('.pickle'):
+            if keyword in file and file.endswith(extension):
                 matched_files.append(os.path.join(root, file))
     
     # 検索結果のチェック
