@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 import random
 import numpy as np
 import pandas as pd
+import os, sys
 
 def culc_gosa(prediction, ydata):
     dis_array = np.zeros(4)
@@ -67,18 +68,35 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 
-# testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use\3d_testloss20250123_162722.pickle"
-
-# minid = get_min_loss_epoch(testloss)
-
-# print(minid)
+# -------------------------------------------------------------------------------------
 
 
-modelpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use_norandom\3d_model_epoch20_20250125_155526.pth"
-
+model_result_dir =r"sentan_morecam\all_use"
+testlossname = "3d_testloss20250123_162722.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
+test_data_path =  r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\big\modifydata_big20250127_184801.pickle"
+
+
+
+
+# -------------------------------------------------------------------------------------
+base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult"
+
+
+base_path = os.path.join(base_path, model_result_dir)
+testloss = os.path.join(base_path, testlossname)
+
+minid = get_min_loss_epoch(testloss)
+
+print(minid)
+epochname = "epoch" + str(minid)
+
+modelpath = myfunction.find_pickle_files(epochname, directory=base_path)
+
+
+
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 

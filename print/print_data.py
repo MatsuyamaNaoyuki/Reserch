@@ -20,12 +20,12 @@ def print_data_graph(df, columns_to_plot, titlename):
 
 
 
-datadf = myfunction.load_pickle(r"C:\Users\shigf\Program\data\sentan_test\modifydata_test20250127_184925.pickle")
+df = pd.read_pickle(r"C:\Users\shigf\Program\data\sentan_test\modifydata_test20250127_184925.pickle")
 
-df = pd.DataFrame(datadf)
+# df = pd.DataFrame(datadf)
 
 # グラフにしたい列を指定
-columns_to_plot = ['sensor1', 'sensor2']  # 指定したい列のリスト
+columns_to_plot = ['force1', 'force2', 'force3', 'force4']  # 指定したい列のリスト
 
 
 print_data_graph(df, columns_to_plot, titlename="magsensor")
