@@ -19,6 +19,7 @@ keyboard = "^0.13.5"
 nokovpy = {path = "nokovpy-3.0.1-py3-none-any.whl"}
 serial = "^0.0.97"
 pyserial = "^3.5"
+statsmodels = "^0.14.4"
 
 [[tool.poetry.source]]
 name = "torch_cu121"

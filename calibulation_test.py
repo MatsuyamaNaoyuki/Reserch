@@ -156,11 +156,12 @@ neatist_train_x = train_x_data[nearist_index]
 diff_base = max_xrow - neatist_train_x
 
 
-x_data = x_data - diff_base
+# x_data = x_data - diff_base
+print(max_xrow)
+print(neatist_train_x)
 
-
-print(f"x_data[max_index] = {x_data[max_index]}")
-print(f"x_data[nearidt] = {train_x_data[nearist_index]}")
+# print(f"x_data[max_index] = {x_data[max_index]}")
+# print(f"x_data[nearidt] = {train_x_data[nearist_index]}")
 resultdir = os.path.dirname(testloss)
 scaler_path = myfunction.find_pickle_files("scaler", resultdir)
 scaler_data = myfunction.load_pickle(scaler_path)
