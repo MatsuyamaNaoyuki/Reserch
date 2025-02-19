@@ -93,11 +93,11 @@ def load_checkpoint(filepath):
 #---------------------------------------------------------------------------------- --------------------------------------
 motor_angle = True
 motor_force = True
-magsensor = True
+magsensor = False
 
-original_result_dir = r"currentOK0203\correctmean_norandom"
-data_name = r"currentOK20250203_180002.pickle"
-resume_training = False  # 再開したい場合は True にする
+original_result_dir = r"pana_demo_learning\angle_and_force"
+data_name = r"pana_demo_learning20250212_164210.pickle"
+resume_training = True  # 再開したい場合は True にする
 csv = False#今後Flaseに統一
 #------------------------------------------------------------------------------------------------------------------------
 

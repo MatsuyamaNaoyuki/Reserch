@@ -80,9 +80,9 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\currentOK0203\correctmean_norandom\3d_testloss20250205_043927.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\moredataset1000\10per\alluse\3d_testloss20250210_160948.pickle"
 
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\currentOK0203\currentOK20250203_180002.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\currentOK0203\currentOK_bigtest_020420250204_213216.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
@@ -119,7 +119,7 @@ y_change = (y_data - y_mean) / y_std
 #モデルのロード
 minid = str(get_min_loss_epoch(testloss))
 print(f"使用したephoch:{minid}")
-modelpath = myfunction.find_pickle_files(minid, directory=resultdir, extension='.pth')
+modelpath = myfunction.find_pickle_files("epoch" + minid, directory=resultdir, extension='.pth')
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 model_from_script.eval()
 
@@ -128,15 +128,15 @@ model_from_script.eval()
 # x_data から 1 サンプルを取得（例: 0番目のサンプル）
 dis_array = np.zeros((1000, 4))
 # print(dis_array)
-for i in range(1):
+for i in range(1000):
     # sample_idx = random.randint(int(len(x_data) * 0.8 ),len(x_data)-1)  # 推論したいサンプルのインデックス
     sample_idx = random.randint(0,len(x_data)-1)  # 推論したいサンプルのインデックス
     single_sample = x_change[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     # 推論を行う（GPUが有効ならGPU上で実行）
     with torch.no_grad():  # 勾配計算を無効化
         prediction = model_from_script(single_sample)
-    print(prediction)
-    print(y_change[sample_idx])
+    # print(prediction)
+    # print(y_change[sample_idx])
     single_sample = single_sample * x_std + x_mean
     prediction = prediction * y_std + y_mean
     distance = culc_gosa(prediction.tolist()[0], y_data[sample_idx].tolist())
