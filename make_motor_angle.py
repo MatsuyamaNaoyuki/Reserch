@@ -261,6 +261,11 @@ def test():
 
     data.extend([[0, 0, 250, 0]])
     data.extend([[0, 0, 0, 0]])
+    data.extend([[250, 0, 0, 0]])
+    data.extend([[0, 0, 0, 0]])
+    data.extend([[0, 250, 0, 0]])
+    data.extend([[0, 0, 0, 0]])
+
 
     return data
 
@@ -268,12 +273,12 @@ def test():
 # motor_angle = randam_heimen()
 # print(motor_angle)
 motor_angle = []
-for i in range(500):
+for i in range(4500):
     motor_angle.extend(randam_rittai_ver0120())
 # motor_angle.extend(test())
 print(motor_angle)
 
+motor_angle = test()
 
-
-filename = 'C:\\Users\\shigf\\Program\\data\\sentan\\howtomove_500'
+filename = 'C:\\Users\\shigf\\Program\\data\\motion_demo\\howtomove_motion_demo'
 myfunction.wirte_pkl(motor_angle, filename)

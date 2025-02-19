@@ -110,7 +110,7 @@ def move(Motors, howtomovepath):
         # Motors.move_to_point(2, angles[1])
         # Motors.move_to_point(3, angles[2])
         # Motors.move_to_point(4, angles[3])
-        if (i +1) % 300 == 0:
+        if (i +1) % 500 == 0:
             write_pkl_event_motor.set()
             write_pkl_event_mag.set()
             write_pkl_event_Mc.set()
@@ -179,7 +179,7 @@ def get_motioncapture(Ms, mcpath):
 
 # ----------------------------------------------------------------------------------------
 
-result_dir = r"currentOK_big_test_0204"
+result_dir = r"motion_demo"
 
 
 # ----------------------------------------------------------------------------------------
