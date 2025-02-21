@@ -88,15 +88,22 @@ def load_checkpoint(filepath):
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
     return checkpoint['epoch'], checkpoint['record_train_loss'], checkpoint['record_test_loss']
 
+def save_test(test_dataset, result_dir):
 
+
+    test_indices = test_dataset.indices  # 添え字のみ取得
+# **保存パス**
+    test_indices_path = os.path.join(result_dir, "test_indices")
+
+    # **pickle ファイルとして保存**
+    myfunction.wirte_pkl(test_indices, test_indices_path)
 
 #---------------------------------------------------------------------------------- --------------------------------------
-motor_angle = True
+motor_angle = False
 motor_force = True
-magsensor = False
-
-original_result_dir = r"pana_demo_learning\angle_and_force"
-data_name = r"pana_demo_learning20250212_164210.pickle"
+magsensor = True
+original_result_dir = r"Robomech\force_and_magsensor"
+data_name = r"robomech3000_10per20250217_154732.pickle"
 resume_training = True  # 再開したい場合は True にする
 csv = False#今後Flaseに統一
 #------------------------------------------------------------------------------------------------------------------------
@@ -176,7 +183,10 @@ train_dataset, test_dataset = torch.utils.data.random_split(dataset, [r,1-r])
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
 
-# print(train_dataset)
+
+save_test(test_dataset,result_dir)
+
+
 
 
 start = time.time()  # 現在時刻（処理開始前）を取得

@@ -80,16 +80,16 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\moredataset1000\10per\alluse\3d_testloss20250210_160948.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech\angle_and_magsensor\3d_testloss20250217_224655.pickle"
 
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\currentOK0203\currentOK_bigtest_020420250204_213216.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech\robomech3000_10test20250218_151725.pickle"
 motor_angle = True
-motor_force = True
+motor_force = False
 magsensor = True
 
+testin = None
 #-----------------------------------------------------------------------------------------------------------------
 pickle = detect_file_type(filename)
-testloss = Path(testloss)
 basepath = Path(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult")
 
 
@@ -101,6 +101,10 @@ x_data = x_data.to(device)
 y_data = y_data.to(device)
 
 
+if testin is not None:
+    test_indices = myfunction.load_pickle(testin)
+    x_data = x_data[test_indices]  
+    y_data = y_data[test_indices]
 
 
 resultdir = os.path.dirname(testloss)
@@ -119,7 +123,7 @@ y_change = (y_data - y_mean) / y_std
 #モデルのロード
 minid = str(get_min_loss_epoch(testloss))
 print(f"使用したephoch:{minid}")
-modelpath = myfunction.find_pickle_files("epoch" + minid, directory=resultdir, extension='.pth')
+modelpath = myfunction.find_pickle_files("epoch" + minid + "_", directory=resultdir, extension='.pth')
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 model_from_script.eval()
 
