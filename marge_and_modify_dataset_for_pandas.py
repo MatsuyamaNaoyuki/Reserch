@@ -177,7 +177,7 @@ df = df.drop(columns=['Mc1z'])
 # df = df.head(8670)
 # df = df[df.index  % 10 == 0]
 
-filename = "currentOK_bigtest_0204"
+filename = "robomech3000_10test"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'

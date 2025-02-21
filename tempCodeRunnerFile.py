@@ -1,1 +1,1 @@
--
+window=window_size, min_periods=1).mean()
