@@ -1,7 +1,7 @@
 import threading, csv, os
 import time, datetime, getopt, sys
 from myclass import myfunction
-from myclass.MyDynamixel2 import MyDynamixel
+from myclass.MyDynamixel3 import MyDynamixel
 from myclass.MyMagneticSensor import MagneticSensor
 import queue
 import pickle
@@ -97,6 +97,8 @@ def get_magsensor(Ms, magpath):
 
     
 
+
+
 def move(Motors, howtomovepath):
     with open(howtomovepath, mode='br') as fi:
         change_angle = pickle.load(fi)
@@ -118,6 +120,7 @@ def move(Motors, howtomovepath):
 
     # time.sleep(2)
     stop_event.set()
+    
     
     
     
@@ -181,7 +184,6 @@ def get_motioncapture(Ms, mcpath):
 
 result_dir = r"hit_test"
 
-
 # ----------------------------------------------------------------------------------------
 
 
@@ -201,6 +203,8 @@ howtomovepath = myfunction.find_pickle_files("howtomove", basepath)
 init_motion_capture()
 Motors = MyDynamixel()
 Ms = MagneticSensor()
+Motors.set_motor_5()
+time.sleep(3)
 results = {}
 stop_event = threading.Event()
 write_pkl_event_motor = threading.Event()

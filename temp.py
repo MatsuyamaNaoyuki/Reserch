@@ -1,58 +1,76 @@
-import pickle
-import numpy as np
-from myclass import myfunction
 import pandas as pd
-import datetime, os, csv
+import numpy as np
+import matplotlib.pyplot as plt
 
-def mag_data_change2(row):
-    split_value = row[1].split('/')
-    if len(split_value) != 9:
-        split_value = split_value[1:]
-    row = row[:1]
-    row.extend(split_value)
-    return row
+import pandas as pd
 
-magsensor = myfunction.load_pickle(r"C:\Users\shigf\Program\data\moredataset5000_0207\motor20250208_103828.pickle")
-print(len(magsensor))
+def replace_short_neg_sequences(series, max_value, min_value):
+    limit_length=8
+    values = series.values
+    start = None  # 連続部分の開始位置を記録
 
-magsensor = magsensor[:int(len(magsensor) * 10 / 5000)]
+    for i in range(len(values)):
+        if values[i] == min_value:
 
+            if start is None:
+                print(f"i = {i}")
+                start = i  # 連続の開始位置
+        else:
+            if start is not None:
+                # print(f"start = {start}")
+                # print(f"i = {i}")
+                length = i - start
+                # print(f"length = {length}")
+                if length <= limit_length:
+                    # print(values[start - 3:i + 3])
+                    values[start:i] = max_value  # 置き換え
+                    # print(values[start - 3:i + 3])
+                start = None  # 次の連続部分を探す
+                print("---------------------------------------")
+            
 
-myfunction.wirte_pkl(magsensor, "motor")
+    # 最後の部分の処理（連続が終わらない場合）
+    if start is not None:
+        length = len(values) - start
+        if length <= limit_length:
+            values[start:] = max_value
 
-# print(len(magsensor))
-
-# magdata = []
-# for magrow in magsensor:
-#     magdata.append(mag_data_change2(magrow))
-
-
-# magdata.insert(0, ["time","sensor1","sensor2","sensor3","sensor4","sensor5","sensor6","sensor7","sensor8","sensor9"])
-
-
-
-# df = pd.DataFrame(magdata[1:], columns=magdata[0])
-
-# df['sensor1'] = pd.to_numeric(df['sensor1'], errors='coerce')
-# df['sensor2'] = pd.to_numeric(df['sensor2'], errors='coerce')
-# df['sensor3'] = pd.to_numeric(df['sensor3'], errors='coerce')
-# df['sensor4'] = pd.to_numeric(df['sensor4'], errors='coerce')
-# df['sensor5'] = pd.to_numeric(df['sensor5'], errors='coerce')
-# df['sensor6'] = pd.to_numeric(df['sensor6'], errors='coerce')
-# df['sensor7'] = pd.to_numeric(df['sensor7'], errors='coerce')
-# df['sensor8'] = pd.to_numeric(df['sensor8'], errors='coerce')
-# df['sensor9'] = pd.to_numeric(df['sensor9'], errors='coerce')
+    return pd.Series(values, index=series.index)
 
 
-# min_mag = 300
-# max_mag = 800
-# df = df[(df['sensor1'] > min_mag) & (df['sensor2'] > min_mag) & (df['sensor3'] > min_mag)]
-# df = df[(df['sensor4'] > min_mag) & (df['sensor5'] > min_mag) & (df['sensor6'] > min_mag)]
-# df = df[(df['sensor7'] > min_mag) & (df['sensor8'] > min_mag) & (df['sensor9'] > min_mag)]
 
 
-# df = df[(df['sensor1'] < max_mag) & (df['sensor2'] < max_mag) & (df['sensor3'] < max_mag)]
-# df = df[(df['sensor4'] < max_mag) & (df['sensor5'] < max_mag) & (df['sensor6'] < max_mag)]
-# df = df[(df['sensor7'] < max_mag) & (df['sensor8'] < max_mag) & (df['sensor9'] < max_mag)]
+def change_force_to_2_value(series):
+    min_value = -200
+    max_value = 0
+    window_size = 5
+    smoothed_col = series.rolling(window=window_size, min_periods=1).mean()
+    diff = smoothed_col.sub(smoothed_col.shift(2)).abs()
+    two_val = diff.apply(lambda x: max_value if x >= 4 else min_value)
+    two_val = replace_short_neg_sequences(two_val, max_value, min_value)
+    two_val = replace_short_neg_sequences(two_val, min_value, max_value)
+    return two_val, diff
+    
 
-# print(len(df))
+# データの読み込み
+motor = pd.read_pickle("motor20250220_163739.pickle")
+motor = pd.DataFrame(motor)
+print(motor.iloc[:, 9])
+motor.loc[:, "Flag"], motor.loc[:, "diff"]  = change_force_to_2_value(motor.iloc[:, 9])
+
+
+
+# 平滑化
+
+# プロット
+columns_to_plot = [9, "Flag", "diff"]
+plt.figure()
+for column in columns_to_plot:
+    plt.plot(motor.index, motor[column], label=column)
+
+plt.title("Selected Columns")
+plt.xlabel("Row Index")
+plt.ylabel("Value")
+plt.legend()
+plt.grid(True)
+plt.show()
