@@ -7,9 +7,8 @@ import queue
 import pickle
 
 
-def move(Motors, howtomovepath):
-    with open(howtomovepath, mode='br') as fi:
-        change_angle = pickle.load(fi)
+def move(Motors, ):
+    change_angle = [[0,0,250,0], [0,0,0,0]]
     len_angle = len(change_angle)
     print(change_angle)
     for i, angles in enumerate(change_angle):
@@ -33,4 +32,4 @@ result_dir = r"C:\Users\shigf\Program\data\currentOK_test0203\howtomove_50020250
 # basepath = os.path.join(base_path, result_dir)
 # howtomovepath = myfunction.find_pickle_files("howtomove", basepath)
 Motors = MyDynamixel()
-move(Motors, result_dir)
+move(Motors)

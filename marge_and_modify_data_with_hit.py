@@ -82,7 +82,7 @@ def replace_short_neg_sequences(series, max_value, min_value):
 def change_force_to_2_value(series):
     min_value = 0
     max_value = 1
-    window_size = 5
+    window_size = 10
     smoothed_col = series.rolling(window=window_size, min_periods=1).mean()
     diff = smoothed_col.sub(smoothed_col.shift(2)).abs()
     two_val = diff.apply(lambda x: max_value if x >= 4 else min_value)
@@ -199,10 +199,12 @@ df = modify_motion(df)
 print(df.columns)
 
 
-# # df = df.head(8670)
-# # df = df[df.index  % 10 == 0]
 
-filename = "test"
+
+# # df = df.head(8670)
+df = df[df.index  % 10 == 0]
+
+filename = "with_hit"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'

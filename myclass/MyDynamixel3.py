@@ -267,5 +267,5 @@ class MyDynamixel():
         self.anglerecord.append(now_angle)
     
     def set_motor_5(self):
-        dx2.DXL_SetGoalAngleAndTime(self.dev, 5,  25.2 - 180,3)
+        dx2.DXL_SetGoalAngleAndTime(self.dev, 5,  25.2 ,3)
 
