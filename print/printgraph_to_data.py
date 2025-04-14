@@ -5,11 +5,11 @@ import matplotlib.pyplot as plt
 # サンプルデータフレーム
 
 
-df = pd.read_pickle(r"C:\Users\shigf\Program\data\withhit\testyou\withhit_continumtest20250227_132458.pickle")
+df = pd.read_pickle(r"C:\Users\shigf\Program\data\0408_newfinger_nohit\tube_softfinger_no_hit_1500_20250411_134417.pickle")
 df = pd.DataFrame(df)
-
-columns_to_plot = ["rotate1", "rotate2", "rotate3"]  # 指定したい列のリスト
-
+print(df.columns)   
+columns_to_plot = ["sensor7", "sensor8", "sensor9"]  # 指定したい列のリスト
+df = df[-1000:]
 # 各列を個別にプロット
 plt.figure()  # 新しい図を作成
 for column in columns_to_plot:

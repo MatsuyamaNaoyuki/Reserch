@@ -126,7 +126,7 @@ margedata.insert(0, ["time","rotate1","rotate2","rotate3","rotate4","force1","fo
 df = pd.DataFrame(margedata[1:], columns=margedata[0])
 
 
-
+original_len = len(df)
 
 
 df = df[(df['Mc2x'] < 100000) & (df['Mc2y'] < 100000) & (df['Mc2z'] < 100000)]
@@ -134,6 +134,10 @@ df = df[(df['Mc3x'] < 100000) & (df['Mc3y'] < 100000) & (df['Mc3z'] < 100000)]
 df = df[(df['Mc4x'] < 100000) & (df['Mc4y'] < 100000) & (df['Mc4z'] < 100000)]
 df = df[(df['Mc5x'] < 100000) & (df['Mc5y'] < 100000) & (df['Mc5z'] < 100000)]
 
+filtered_len = len(df)
+removed_rows = original_len - filtered_len
+
+print(f"motionで削除された行数: {removed_rows}")
 min_mag = 300
 max_mag = 800
 
@@ -157,6 +161,11 @@ df = df[(df['sensor1'] < max_mag) & (df['sensor2'] < max_mag) & (df['sensor3'] <
 df = df[(df['sensor4'] < max_mag) & (df['sensor5'] < max_mag) & (df['sensor6'] < max_mag)]
 df = df[(df['sensor7'] < max_mag) & (df['sensor8'] < max_mag) & (df['sensor9'] < max_mag)]
 
+mag_filtered_len = len(df)
+removed_rows = filtered_len - mag_filtered_len
+
+print(f"magで削除された行数: {removed_rows}")
+
 df['Mc2x'] = df['Mc2x'] - df['Mc1x']
 df['Mc2y'] = df['Mc2y'] - df['Mc1y']
 df['Mc2z'] = df['Mc2z'] - df['Mc1z']
@@ -177,7 +186,7 @@ df = df.drop(columns=['Mc1z'])
 # df = df.head(8670)
 df = df[df.index  % 10 == 0]
 
-filename = "no_hit_for_test"
+filename = "tube_softfinger_hit_1500_"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'

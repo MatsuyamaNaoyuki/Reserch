@@ -55,6 +55,7 @@ def get_dynamixel(Motors, motorpath):
             motor_data.insert(0, now_time)
             motor_datas.append(motor_data)
             if write_pkl_event_motor.is_set():
+                print(motor_data)
                 # writing_motor_event.set()
                 now = datetime.datetime.now()
                 filename = filepath + str(filenumber) + "_" +now.strftime('%Y%m%d_%H%M%S') + '.pickle'
@@ -83,6 +84,7 @@ def get_magsensor(Ms, magpath):
             mag_data.insert(0, now_time)
             Mag_datas.append(mag_data)
             if write_pkl_event_mag.is_set():
+                print(mag_data)
                 # writing_mag_event.set()
                 now = datetime.datetime.now()
                 filename = filepath + str(filenumber) + "_"+ now.strftime('%Y%m%d_%H%M%S') + '.pickle'
@@ -110,7 +112,7 @@ def move(Motors, howtomovepath):
         # Motors.move_to_point(2, angles[1])
         # Motors.move_to_point(3, angles[2])
         # Motors.move_to_point(4, angles[3])
-        if (i +1) % 500 == 0:
+        if (i +1) % 500 == 0 or i == 1:
             write_pkl_event_motor.set()
             write_pkl_event_mag.set()
             write_pkl_event_Mc.set()
@@ -156,11 +158,11 @@ def get_motioncapture(Ms, mcpath):
             if frame :
                 try:
                     motiondata = py_data_func(frame, client)
-                    # print(motiondata)
                     Motion_datas.append(motiondata)
                 finally:
                     client.PyNokovFreeFrame(frame)
             if write_pkl_event_Mc.is_set():
+                print(motiondata)
                 # writing_mag_event.set()
                 now = datetime.datetime.now()
                 filename = filepath + str(filenumber) + "_"+ now.strftime('%Y%m%d_%H%M%S') + '.pickle'
@@ -179,7 +181,7 @@ def get_motioncapture(Ms, mcpath):
 
 # ----------------------------------------------------------------------------------------
 
-result_dir = r"no_hit_for_test"
+result_dir = r"0408_newfinger_hit"
 
 
 # ----------------------------------------------------------------------------------------
@@ -191,12 +193,12 @@ base_path = r"C:\Users\shigf\Program\data"
 
 
 
-basepath = os.path.join(base_path, result_dir)
-
+base_path = os.path.join(base_path, result_dir)
+print(base_path)
 motorpath = os.path.join(base_path, "motor_")
 magpath = os.path.join(base_path, "mag_")
 mcpath = os.path.join(base_path, "mc_")
-howtomovepath = myfunction.find_pickle_files("howtomove", basepath)
+howtomovepath = myfunction.find_pickle_files("howtomove", base_path)
 
 init_motion_capture()
 Motors = MyDynamixel()
