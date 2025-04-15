@@ -1,76 +1,51 @@
-import pandas as pd
-import numpy as np
+
 import matplotlib.pyplot as plt
+import japanize_matplotlib
+import numpy as np
 
-import pandas as pd
+plt.rcParams.update({'font.size': 22})
+# データの準備（4カテゴリ × 4グループ）
+# categories = ['Marker1', 'Marker2', 'Marker3', 'Marker4']
+categories = ["磁気センサーあり\n(モーター回転角と電流値あり)", "磁気センサーなし\n(モーター回転角と電流値あり)"]
+values = np.array([ 
+    [6.48, 8.74],  # グループ1
+    [7.53, 14.17],   # グループ3
+  # グループ4
+])
+7.53
+['接触ありのみ', '接触あり＆接触なし']
 
-def replace_short_neg_sequences(series, max_value, min_value):
-    limit_length=8
-    values = series.values
-    start = None  # 連続部分の開始位置を記録
+name = ['接触ありのみ', '接触あり＆接触なし']
+# パラメータ設定
+num_groups = values.shape[0]  # データセットの数（4つ）
+num_categories = values.shape[1]  # カテゴリの数（4つ）
+bar_width = 0.2  # 棒の幅
 
-    for i in range(len(values)):
-        if values[i] == min_value:
+# x軸の位置を設定
+x = np.array([0, 0.6]) 
 
-            if start is None:
-                print(f"i = {i}")
-                start = i  # 連続の開始位置
-        else:
-            if start is not None:
-                # print(f"start = {start}")
-                # print(f"i = {i}")
-                length = i - start
-                # print(f"length = {length}")
-                if length <= limit_length:
-                    # print(values[start - 3:i + 3])
-                    values[start:i] = max_value  # 置き換え
-                    # print(values[start - 3:i + 3])
-                start = None  # 次の連続部分を探す
-                print("---------------------------------------")
-            
+# 色の設定（各データセットの色を変える）
+colors = ['#377eb8', '#ff7f00', '#4daf4a', '#984ea3']
 
-    # 最後の部分の処理（連続が終わらない場合）
-    if start is not None:
-        length = len(values) - start
-        if length <= limit_length:
-            values[start:] = max_value
+# グラフの描画
+plt.figure(figsize=(4.5, 5))  # 横6、縦5
+for i in range(num_groups):
+    plt.bar(x + (i - num_groups/2) * bar_width + bar_width/2, values[i], width=bar_width, label=name[i], color=colors[i], edgecolor='black')
 
-    return pd.Series(values, index=series.index)
+# x軸のラベルを設定
+plt.ylim(0,15)
+plt.xticks(x, categories)
+plt.title('磁気センサー有無による推定誤差の比較')
+# ラベルとタイトル
 
+plt.ylabel('Estimation Error [mm]')
+# plt.title('Grouped Bar Chart (4×4)')
 
-
-
-def change_force_to_2_value(series):
-    min_value = -200
-    max_value = 0
-    window_size = 5
-    smoothed_col = series.rolling(window=window_size, min_periods=1).mean()
-    diff = smoothed_col.sub(smoothed_col.shift(2)).abs()
-    two_val = diff.apply(lambda x: max_value if x >= 4 else min_value)
-    two_val = replace_short_neg_sequences(two_val, max_value, min_value)
-    two_val = replace_short_neg_sequences(two_val, min_value, max_value)
-    return two_val, diff
-    
-
-# データの読み込み
-motor = pd.read_pickle("motor20250220_163739.pickle")
-motor = pd.DataFrame(motor)
-print(motor.iloc[:, 9])
-motor.loc[:, "Flag"], motor.loc[:, "diff"]  = change_force_to_2_value(motor.iloc[:, 9])
-
-
-
-# 平滑化
-
-# プロット
-columns_to_plot = [9, "Flag", "diff"]
-plt.figure()
-for column in columns_to_plot:
-    plt.plot(motor.index, motor[column], label=column)
-
-plt.title("Selected Columns")
-plt.xlabel("Row Index")
-plt.ylabel("Value")
+# 凡例を追加
 plt.legend()
-plt.grid(True)
-plt.show()
+
+# グリッドを追加
+plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+# グラフを表示
+plt.show()  

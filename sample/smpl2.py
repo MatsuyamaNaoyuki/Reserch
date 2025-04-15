@@ -15,7 +15,7 @@
 # の情報を通信した上で取得する場合は、update=Trueを指定する。
 
 import kbhit, sys, time
-from dx2lib import *  # dx2libをインポート
+from unimportant_program.dx2lib import *  # dx2libをインポート
 from dxl import *     # dxlをインポート
 
 from setting import * # サンプル共通のポート・ボーレート・ID等

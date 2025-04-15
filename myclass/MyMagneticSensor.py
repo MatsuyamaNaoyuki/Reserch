@@ -25,7 +25,7 @@ class MagneticSensor:
     #     return rowvalue
     
 
-    def __init__(self, port="COM6", baudrate=115200, timeout=1, datanum=10):
+    def __init__(self, port="COM3", baudrate=115200, timeout=1, datanum=10):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout

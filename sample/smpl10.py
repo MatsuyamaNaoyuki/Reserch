@@ -4,7 +4,7 @@
 # 複数軸から現在角度取得
 
 import sys, time, kbhit
-from dx2lib import *  # dx2libをインポート
+from unimportant_program.dx2lib import *  # dx2libをインポート
 
 from setting import * # サンプル共通のポート・ボーレート・ID等
 

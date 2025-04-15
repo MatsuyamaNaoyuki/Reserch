@@ -4,12 +4,16 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib as mpl
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-from myclass import myfunction
+# from myclass import myfunction
 
 def print_data_graph(df, columns_to_plot, titlename):
     plt.figure()  # 新しい図を作成
+
+    # 指定されたインデックス番号をカラム名に変換
+    columns_to_plot = [df.columns[col] for col in columns_to_plot if col < len(df.columns)]  # 範囲外を防ぐ
+
     for column in columns_to_plot:
-        plt.plot(df.index, df[column], label=column)  # 列ごとにプロット
+        plt.plot(df.index, df[column], label=f"Column {column}")  # カラム名をラベルにする
 
     plt.title(titlename)
     plt.xlabel("Row Index")
@@ -32,5 +36,7 @@ df = df.iloc[front:back]
 print(df.index)
 columns_to_plot = ['rotate1', 'rotate2', 'rotate3', 'rotate4']  # 指定したい列のリスト
 
+columns_to_plot = [11]  # 指定したい列のリスト
 
+    
 print_data_graph(df, columns_to_plot, titlename="magsensor")

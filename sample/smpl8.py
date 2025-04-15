@@ -7,7 +7,7 @@
 # DXL_SetDriveModeでプロファイルを時間に設定しておく事。
 
 import sys, time
-from dx2lib import *  # dx2libをインポート
+from unimportant_program.dx2lib import *  # dx2libをインポート
 
 from setting import * # サンプル共通のポート・ボーレート・ID等
 

@@ -15,7 +15,7 @@
 
 import kbhit, sys, time
 from dataclasses import dataclass
-from dx2lib import *
+from unimportant_program.dx2lib import *
 from dxl import *
 
 from setting import * # サンプル共通のポート・ボーレート・ID等
