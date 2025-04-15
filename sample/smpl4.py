@@ -13,7 +13,7 @@
 
 import sys, time
 from ctypes import *
-from dx2lib import *  # dx2libをインポート
+from unimportant_program.dx2lib import *  # dx2libをインポート
 
 from setting import * # サンプル共通のポート・ボーレート・ID等
 

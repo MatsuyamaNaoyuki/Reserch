@@ -6,7 +6,7 @@
 # キャプチャしたデータのファイル化も行える。
 
 import kbhit, time, threading, os, json
-from dx2lib import *  # dx2libをインポート
+from unimportant_program.dx2lib import *  # dx2libをインポート
 from motion import *  # 
 
 from setting import * # サンプル共通のポート・ボーレート・ID等

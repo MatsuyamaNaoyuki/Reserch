@@ -1,7 +1,7 @@
 #---------------------------------------------
 # Class to play motion
 #---------------------------------------------
-import ctypes, time, threading, collections, dx2lib
+import ctypes, time, threading, collections, unimportant_program.dx2lib as dx2lib
 
 # Tuple for one pattern of motion
 Pose = collections.namedtuple ('Pose', ('targetvalues', 'time'))

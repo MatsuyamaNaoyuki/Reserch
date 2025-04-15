@@ -6,7 +6,7 @@
 # なおソース中のアドレスはXM/XH/XDシリーズを前提としている事に注意。
 
 import sys, time, ctypes
-from dx2lib import *  # dx2libをインポート
+from unimportant_program.dx2lib import *  # dx2libをインポート
 
 from setting import * # サンプル共通のポート・ボーレート・ID等
 

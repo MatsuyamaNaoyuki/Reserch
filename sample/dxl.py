@@ -1,7 +1,7 @@
 #---------------------------------------------
 # Access by item name in control table
 #---------------------------------------------
-import collections, dx2lib
+import collections, unimportant_program.dx2lib as dx2lib
 from ctypes import *
 
 # Minimum unit for each item
