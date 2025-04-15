@@ -6,8 +6,6 @@ from myclass.MyMagneticSensor import MagneticSensor
 import queue
 import pickle
 import pandas as pd
-Motor = MyDynamixel()
-data = pd.read_pickle(r"C:\Users\shigf\Program\data\hit_test\howtomove_50020250127_164123.pickle")
+data1 = pd.read_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger_mixhit\tube_softfinger_hit_1500_20250411_143303.pickle")
 
-data = data[0:10]
-myfunction.wirte_pkl(data, "howtomove")
+data2 = pd.read_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger_mixhit\tube_softfinger_nohit_1500_20250411_144433.pickle")

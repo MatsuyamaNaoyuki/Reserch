@@ -239,6 +239,7 @@ def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
     pickle_file_path = filename
     df = pd.read_pickle(pickle_file_path)
 
+
     #説明変数と目的変数に分離
 
     input_col = []
@@ -262,7 +263,7 @@ def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
 
     tensor_data_x = torch.tensor(np_x_value, dtype=torch.float32)
     tensor_data_y = torch.tensor(np_y_value, dtype=torch.float32)
-    
+
     return(tensor_data_x,tensor_data_y)
 
 

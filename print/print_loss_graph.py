@@ -38,23 +38,23 @@ def print_loss_graph(trainpath, testpath, graphname):
 
 
 
-trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use\3d_trainloss20250123_162722.pickle"
-testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use\3d_testloss20250123_162722.pickle"
+trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\mixhit\hitornot\3d_trainloss20250224_160805.pickle"
+testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\mixhit\hitornot\3d_testloss20250224_160805.pickle"
 graphname = "alluse"
 
 print_loss_graph(trainpath, testpath, graphname)
 
-trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\angle_and_force\3d_trainloss20250124_171755.pickle"
-testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\angle_and_force\3d_testloss20250124_171755.pickle"
-graphname = "angle_and_force"
+trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech\force_and_magsensor\3d_trainloss20250218_164423.pickle"
+testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech\force_and_magsensor\3d_testloss20250218_164423.pickle"
+graphname = "mag_and_force"
 
 print_loss_graph(trainpath, testpath, graphname)
 
-trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\angle_and_mag\3d_trainloss20250124_131631.pickle"
-testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\angle_and_mag\3d_testloss20250124_131631.pickle"
-graphname = "angle_and_mag"
+# trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\angle_and_mag\3d_trainloss20250124_131631.pickle"
+# testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\angle_and_mag\3d_testloss20250124_131631.pickle"
+# graphname = "angle_and_mag"
 
-print_loss_graph(trainpath, testpath, graphname)
+# print_loss_graph(trainpath, testpath, graphname)
 
 # testpath = r"C:\Users\shigf\Program\data\trainandtest\force_and_mag_norandom_testloss20250127_024245.pickle"
 # trainpath = r"C:\Users\shigf\Program\data\trainandtest\force_and_mag_norandom_trainloss20250127_024245.pickle"

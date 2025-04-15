@@ -80,9 +80,8 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech\angle_and_magsensor\3d_testloss20250217_224655.pickle"
-
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech\robomech3000_10test20250218_151725.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_withhit\angle_and_mag\3d_testloss20250227_155911.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_withhit\withhit_fortest20250227_134803.pickle"
 motor_angle = True
 motor_force = False
 magsensor = True
@@ -148,4 +147,4 @@ for i in range(1000):
 
 print(dis_array)
 column_means = np.mean(dis_array, axis=0)
-print("列ごとの平均:", column_means)
+print("列ごとの平均:", column_means.round(2))

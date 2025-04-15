@@ -80,13 +80,14 @@ optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\moredataset1000\10per\alluse\3d_testloss20250210_160948.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_withhit\all_use\3d_testloss20250225_225940.pickle"
 
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\currentOK0203\currentOKtest_020320250203_201037.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_withhit\withhit_fortest20250227_134803.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
-
+front = 388
+back = 518
 #-----------------------------------------------------------------------------------------------------------------
 pickle = detect_file_type(filename)
 testloss = Path(testloss)
@@ -128,7 +129,7 @@ model_from_script.eval()
 # x_data から 1 サンプルを取得（例: 0番目のサンプル）
 dis_array = np.zeros((len(x_data), 12))
 # print(dis_array)
-for i in range(len(x_data)):
+for i in range(front, back):
     sample_idx = i # 推論したいサンプルのインデックス
     single_sample = x_change[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     # 推論を行う（GPUが有効ならGPU上で実行）
@@ -139,8 +140,10 @@ for i in range(len(x_data)):
     prediction = prediction.tolist()[0]
     dis_array[i, :] = prediction
 
+dis_array = dis_array[front:back]
+
 print(type(dis_array))
 df = pd.DataFrame(dis_array, columns=["Mc2x", "Mc2y", "Mc2z", "Mc3x", "Mc3y", "Mc3z","Mc4x", "Mc4y", "Mc4z","Mc5x", "Mc5y", "Mc5z"])
-
+print(df)
 # CSV ファイルに書き出し
-df.to_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\moredataset1000\output.pickle")
+df.to_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\panademo\output2.pickle")
