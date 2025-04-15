@@ -186,7 +186,7 @@ df = df.drop(columns=['Mc1z'])
 # df = df.head(8670)
 df = df[df.index  % 10 == 0]
 
-filename = "tube_softfinger_hit_1500_"
+filename = "tube_softfinger_test_10_"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'

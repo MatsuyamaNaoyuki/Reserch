@@ -10,6 +10,7 @@ curFrmNo = 0
 global client
 
 def py_data_func(pFrameOfMocapData, pUserData):
+    print("DEBUG")
     if pFrameOfMocapData == None:  
         print("Not get the data frame.\n")
     else:
@@ -135,6 +136,7 @@ def py_analog_channel_func(pAnalogData, pUserData):
 def read_data_func(client):
     while True:
         frame = client.PyGetLastFrameOfMocapData()
+        print(frame)
         if frame :
             try:
                 py_data_func(frame, client)

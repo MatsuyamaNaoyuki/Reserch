@@ -13,11 +13,8 @@ import numpy as np
 import pandas as pd
 import os, sys
 from pathlib import Path
-
-
-
-
-
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import Axes3D
 
 def culc_gosa(prediction, ydata):
     dis_array = np.zeros(4)
@@ -132,24 +129,50 @@ model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 model_from_script.eval()
 
 
+#可視化される点のインデックス
+visual_index = range(len(x_data))
 
-# x_data から 1 サンプルを取得（例: 0番目のサンプル）
-dis_array = np.zeros((1000, 4))
-# print(dis_array)
-for i in range(1000):
-    # sample_idx = random.randint(int(len(x_data) * 0.8 ),len(x_data)-1)  # 推論したいサンプルのインデックス
-    sample_idx = random.randint(0,len(x_data)-1)  # 推論したいサンプルのインデックス
+estimation_array = np.zeros((len(visual_index), 12))
+dis_array=np.zero((len(visual_index), 4))
+
+for i in visual_index:
+    sample_idx = i
     single_sample = x_change[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
-    # 推論を行う（GPUが有効ならGPU上で実行）
     with torch.no_grad():  # 勾配計算を無効化
         prediction = model_from_script(single_sample)
-    # print(prediction)
-    # print(y_change[sample_idx])
     single_sample = single_sample * x_std + x_mean
     prediction = prediction * y_std + y_mean
+    estimation_array[i, :] = prediction
     distance = culc_gosa(prediction.tolist()[0], y_data[sample_idx].tolist())
     dis_array[i, :] = distance
+    
 
-print(dis_array)
-column_means = np.mean(dis_array, axis=0)
-print("列ごとの平均:", column_means.round(2))
+x = estimation_array 
+
+fig = plt.figure()
+ax = fig.add_subplot(111, projection='3d')
+
+# 点群をプロット
+ax.scatter(x, y, z, c='r', marker='o')
+
+# ラベル付け
+ax.set_xlabel('X Label')
+ax.set_ylabel('Y Label')
+ax.set_zlabel('Z Label')
+
+max_range = max(
+    max(x) - min(x),
+    max(y) - min(y),
+    max(z) - min(z)
+) / 2.0
+
+mid_x = (max(x) + min(x)) / 2.0
+mid_y = (max(y) + min(y)) / 2.0
+mid_z = (max(z) + min(z)) / 2.0
+
+ax.set_box_aspect([1, 1, 1])  # 各軸の比率を同じに設定
+ax.set_xlim(mid_x - max_range, mid_x + max_range)
+ax.set_ylim(mid_y - max_range, mid_y + max_range)
+ax.set_zlim(mid_z - max_range, mid_z + max_range)
+# 表示
+plt.show()

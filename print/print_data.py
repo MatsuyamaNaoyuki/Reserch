@@ -24,19 +24,19 @@ def print_data_graph(df, columns_to_plot, titlename):
 
 
 
-df = pd.read_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_withhit\withhit_fortest20250227_134803.pickle")
+df = pd.read_pickle(r"C:\Users\WRS\Desktop\Matsuyama\Reserch\tube_softfinger_test_10_20250415_172035.pickle")
 
 df = pd.DataFrame(df)
-front =int( len(df) / 5 * 3)
-back =int( len(df) / 5 * 4)
-print(front)
-print(back)
-df = df.iloc[front:back]
-# df = df.iloc[int(57500):int( 60000)]
-print(df.index)
-columns_to_plot = ['rotate1', 'rotate2', 'rotate3', 'rotate4']  # 指定したい列のリスト
+# front =int( len(df) / 3000 * 1)
+# back =int( len(df) / 3000 * 15)
+# print(front)
+# print(back)
+# df = df.iloc[front:back]
+# # df = df.iloc[int(57500):int( 60000)]
+# print(df.index)
 
-columns_to_plot = [11]  # 指定したい列のリスト
+
+columns_to_plot = [1,2,3,4]  # 指定したい列のリスト
 
     
 print_data_graph(df, columns_to_plot, titlename="magsensor")
