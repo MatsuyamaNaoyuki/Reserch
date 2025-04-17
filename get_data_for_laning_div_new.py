@@ -182,7 +182,7 @@ def get_motioncapture(Ms, mcpath):
 # ----------------------------------------------------------------------------------------
 
 
-result_dir = r"tubefinger_mixhit"
+result_dir = r"temp"
 
 base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult"
 

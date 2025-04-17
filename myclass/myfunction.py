@@ -325,3 +325,10 @@ def find_pickle_files(keyword, directory=None, extension = '.pickle'):
         raise ValueError(f"複数のファイルが見つかりました: {matched_files}")
     
     return matched_files[0]  # 1つだけの場合はそのファイルを返す
+
+def get_min_loss_epoch(file_path):
+    testdf = pd.read_pickle(file_path)
+    testdf = pd.DataFrame(testdf)
+    filter_testdf = testdf[testdf.index % 10 == 0]
+    minid = filter_testdf.idxmin()
+    return minid.iloc[-1]

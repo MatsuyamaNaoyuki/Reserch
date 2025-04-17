@@ -115,6 +115,7 @@ magdata = []
 for magrow in magsensor:
     magdata.append(mag_data_change2(magrow))
 
+
 margedata = data_marge_v2(motiondata, motordata, magdata)
 
 
@@ -190,6 +191,7 @@ filename = "tube_softfinger_test_10_"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
+print(df.dtypes)
+# print(type(df[2][10]))
 
-
-df.to_pickle(filename)
+# df.to_pickle(filename)

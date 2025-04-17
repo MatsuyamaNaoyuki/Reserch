@@ -70,18 +70,8 @@ class ResNetRegression(nn.Module):
         out = self.resnet(x)
         return out
 
-input_dim = 4
-output_dim = 12
-learning_rate = 0.001
-num_epochs = 300
 
 
-
-model = ResNetRegression(input_dim=input_dim, output_dim=output_dim)
-if torch.cuda.is_available():
-    model.cuda()
-criterion = nn.MSELoss()
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
@@ -93,6 +83,19 @@ magsensor = True
 
 testin = None
 #-----------------------------------------------------------------------------------------------------------------
+
+input_dim = 4 * motor_angle + 4 * motor_force + 9 * magsensor
+output_dim = 12
+learning_rate = 0.001
+num_epochs = 300
+
+model = ResNetRegression(input_dim=input_dim, output_dim=output_dim)
+if torch.cuda.is_available():
+    model.cuda()
+criterion = nn.MSELoss()
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+
 pickle = detect_file_type(filename)
 basepath = Path(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult")
 
@@ -136,10 +139,12 @@ model_from_script.eval()
 # x_data から 1 サンプルを取得（例: 0番目のサンプル）
 dis_array = np.zeros((1000, 4))
 # print(dis_array)
-for i in range(1000):
+start = time.time()
+for i in range(1):
     # sample_idx = random.randint(int(len(x_data) * 0.8 ),len(x_data)-1)  # 推論したいサンプルのインデックス
     sample_idx = random.randint(0,len(x_data)-1)  # 推論したいサンプルのインデックス
     single_sample = x_change[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
+    print(single_sample)
     # 推論を行う（GPUが有効ならGPU上で実行）
     with torch.no_grad():  # 勾配計算を無効化
         prediction = model_from_script(single_sample)
@@ -149,6 +154,10 @@ for i in range(1000):
     prediction = prediction * y_std + y_mean
     distance = culc_gosa(prediction.tolist()[0], y_data[sample_idx].tolist())
     dis_array[i, :] = distance
+end = time.time()
+
+t = start - end
+print(t)
 
 print(dis_array)
 column_means = np.mean(dis_array, axis=0)

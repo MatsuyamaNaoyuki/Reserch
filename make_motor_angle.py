@@ -279,6 +279,6 @@ for i in range(4500):
 print(motor_angle)
 
 motor_angle = test()
-
-filename = 'C:\\Users\\shigf\\Program\\data\\motion_demo\\howtomove_motion_demo'
+motor_angle = [[0,0,0,0],[0,0,0,0],[0,0,0,0]]
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\temp\howtomove"
 myfunction.wirte_pkl(motor_angle, filename)

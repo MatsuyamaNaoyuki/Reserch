@@ -1,17 +1,18 @@
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
-import pandas as pd
-import datetime
+import threading, csv, os
+import time, datetime, getopt, sys
+from myclass import myfunction
+from myclass.MyDynamixel2 import MyDynamixel
+from myclass.MyMagneticSensor import MagneticSensor
+import numpy as np
+from nokov.nokovsdk import *
 
-# CSVファイルの読み込み
-file_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech\robomech300020250217_140437.pickle"
-data = pd.read_pickle(file_path)
-
-df = data[data.index  % 10 == 0]
-filename = "robomech3000_10per"
-
-now = datetime.datetime.now()
-filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision.models import resnet18
+from torch.utils.data import DataLoader
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
-df.to_pickle(filename)
+a = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\temp\howtomove20250417_140352.pickle")
+print(a)

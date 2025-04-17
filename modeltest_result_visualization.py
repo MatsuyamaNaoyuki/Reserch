@@ -15,6 +15,7 @@ import os, sys
 from pathlib import Path
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
+from matplotlib import cm
 
 def culc_gosa(prediction, ydata):
     dis_array = np.zeros(4)
@@ -130,31 +131,51 @@ model_from_script.eval()
 
 
 #可視化される点のインデックス
-visual_index = range(len(x_data))
+visual_index = range(0,len(x_data),10)
 
 estimation_array = np.zeros((len(visual_index), 12))
-dis_array=np.zero((len(visual_index), 4))
+dis_array=np.zeros((len(visual_index), 4))
 
-for i in visual_index:
-    sample_idx = i
+for i, sample_idx in enumerate(visual_index):
     single_sample = x_change[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     with torch.no_grad():  # 勾配計算を無効化
         prediction = model_from_script(single_sample)
     single_sample = single_sample * x_std + x_mean
     prediction = prediction * y_std + y_mean
-    estimation_array[i, :] = prediction
+    estimation_array[i, :] = prediction.tolist()[0]
     distance = culc_gosa(prediction.tolist()[0], y_data[sample_idx].tolist())
     dis_array[i, :] = distance
     
 
-x = estimation_array 
+list_ydata = y_data.tolist()
+list_ydata = [list_ydata[i] for i in visual_index]
+
+
+x = [row[9] for row in list_ydata]
+y = [row[10] for row in list_ydata]
+z = [row[11] for row in list_ydata]
+ex = [row[9] for row in estimation_array]
+ey = [row[10] for row in estimation_array]
+ez = [row[11] for row in estimation_array]
+
+vx = [ai - bi for ai, bi in zip(ex, x)]
+vy = [ai - bi for ai, bi in zip(ey, y)]
+vz = [ai - bi for ai, bi in zip(ez, z)]
+
+magnitude = np.sqrt(np.array(vx)**2 + np.array(vy)**2 + np.array(vz)**2)
+
+# カラーマップを作成
+norm = plt.Normalize(magnitude.min(), magnitude.max())
+colors = cm.viridis(norm(magnitude))
+print(colors)
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 
 # 点群をプロット
-ax.scatter(x, y, z, c='r', marker='o')
-
+ax.scatter(x, y, z, marker='.', color=colors)
+ax.scatter(ex, ey, ez, marker='.', color=colors)
+ax.quiver(x, y, z, vx, vy, vz, length=1, normalize=False, color=colors,arrow_length_ratio=0.5)
 # ラベル付け
 ax.set_xlabel('X Label')
 ax.set_ylabel('Y Label')
@@ -163,7 +184,10 @@ ax.set_zlabel('Z Label')
 max_range = max(
     max(x) - min(x),
     max(y) - min(y),
-    max(z) - min(z)
+    max(z) - min(z),
+    max(ex) - min(ex),
+    max(ey) - min(ey),
+    max(ez) - min(ez)
 ) / 2.0
 
 mid_x = (max(x) + min(x)) / 2.0
