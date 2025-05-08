@@ -2,19 +2,24 @@ import pandas as pd
 
 
 
-file1_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger_mixhit\tube_softfinger_hit_1500_20250414_125109.pickle"
-df1 = pd.read_pickle(file1_path)
-
-file2_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger_mixhit\tube_softfinger_nohit_1500_20250411_144433.pickle"
-df2 = pd.read_pickle(file2_path)
 
 
 
-# データフレームを結合
-merged_df = pd.concat([df1, df2], ignore_index=True)
+file_path_list =[r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\withhit_fortest20250227_134803.pickle",
+                 r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\nohit_fortest20250227_134852.pickle"]
 
-# 結果を表示
+marge_df = None
+
+for i in range (len(file_path_list)):
+    df = pd.read_pickle(file_path_list[i])
+    df['type'] = i
+    if marge_df is None:
+        marge_df = df
+    else:
+        merged_df = pd.concat([marge_df, df], ignore_index=True)
 
 
-output_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger_mixhit\tube_softfinger_mixhit_3000_20250411_144433.pickle"
+
+
+output_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\mixhit_fortest.pickle"
 merged_df.to_pickle(output_path)

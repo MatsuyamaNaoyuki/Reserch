@@ -111,11 +111,7 @@ def train(model, data_loader):
     return loss_mean
 
 def make_sequence_tensor(x, y, L=6):
-    """
-    x : (N, input_dim)
-    y : (N, 12)
-    return TensorDataset where each sample = (x_seq, y_target)
-    """
+
     seq_x, seq_y = [], []
     for i in range(L-1, len(x)):
         seq_x.append(x[i-L+1:i+1])      # 長さ L
@@ -170,8 +166,8 @@ def save_test(test_dataset, result_dir):
 motor_angle = True
 motor_force = True
 magsensor = True
-original_result_dir = r"Robomech_GRU\alluse"
-data_name = r"mixhit_300020250225_204358.pickle"
+original_result_dir = r"tubefinger_mixhit\GRU_alluse"
+data_name = r"tube_softfinger_mixhit_3000_20250411_144433.pickle"
 resume_training = False  # 再開したい場合は True にする
 csv = False#今後Flaseに統一
 

@@ -102,7 +102,7 @@ def save_test(test_dataset, result_dir):
 motor_angle = False
 motor_force = False
 magsensor = True
-original_result_dir = r"tubefinger_mixhit\onlymag"
+original_result_dir = r"tubefinger_mixhit\test"
 data_name = r"tube_softfinger_mixhit_3000_20250411_144433.pickle"
 resume_training = False  # 再開したい場合は True にする
 csv = False#今後Flaseに統一

@@ -6,7 +6,7 @@ authors = ["weiwei <wanweiwei07@gmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = "^3.12"
+python = ">=3.10,<3.11"
 matplotlib = "^3.10.0"
 pandas = "^2.2.3"
 scipy = "^1.14.1"
@@ -20,6 +20,11 @@ nokovpy = {path = "nokovpy-3.0.1-py3-none-any.whl"}
 serial = "^0.0.97"
 pyserial = "^3.5"
 statsmodels = "^0.14.4"
+diffusers = ">=0.33.0"
+accelerate = "^1.6.0"
+datasets = "^3.5.0"
+wandb = "^0.19.9"
+tensorboard = "^2.19.0"
 
 [[tool.poetry.source]]
 name = "torch_cu121"
