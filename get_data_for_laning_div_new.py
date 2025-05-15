@@ -104,14 +104,14 @@ def move(Motors, howtomovepath):
         change_angle = pickle.load(fi)
     len_angle = len(change_angle)
     print(change_angle)
+    time_len = [4,4,10,10,7,7, 5,5, 9,9]
     for i, angles in enumerate(change_angle):
         print(angles)
         print(str(i) + "/" +  str(len_angle))
-        Motors.move_to_points(angles, times = 7)
-        # Motors.move_to_point(1, angles[0])
-        # Motors.move_to_point(2, angles[1])
-        # Motors.move_to_point(3, angles[2])
-        # Motors.move_to_point(4, angles[3])
+        if time_len is None:
+            Motors.move_to_points(angles, times = 7)
+        else:
+            Motors.move_to_points(angles, times = time_len[i%len(time_len)])
         if (i +1) % 500 == 0:
             write_pkl_event_motor.set()
             write_pkl_event_mag.set()
