@@ -1,30 +1,26 @@
-from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
+from myclass import myfunction
+import matplotlib.pyplot as plt
+import pandas as pd
+
+df = myfunction.load_pickle(r"C:\Users\shigf\Desktop\5月15日のごみ箱\mixhit_300020250225_204120.pickle")
+
+df = pd.DataFrame(df)
+l = int(len(df) / 2)
 
 
-def get_min_step(log_dir):
-    ea = EventAccumulator(log_dir)
-    ea.Reload()
-    tag = "loss"
-    events = ea.Scalars(tag)
-    min_event = min(events, key=lambda e: e.value)
-    return min_event.step
+df1 = df[97822:97822 +700]
 
+print(df.columns)   
+columns_to_plot = ["rotate1", "rotate2", "rotate3"]  # 指定したい列のリスト
 
+# 各列を個別にプロット
+plt.figure()  # 新しい図を作成
+for column in columns_to_plot:
+    plt.plot(df.index, df[column], label=column)  # 列ごとにプロット
 
-# ログファイルがあるディレクトリ（runs/...）
-log_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\all_use\logs\loss_test" # ← TensorBoardのlogdirと同じ
-
-# EventAccumulator を初期化してロード
-ea = EventAccumulator(log_dir)
-ea.Reload()
-
-# 目的のスカラー名（例： 'loss/test' ）
-tag = "loss"
-
-# 全ステップ分のスカラーを取得（step, wall_time, value）
-events = ea.Scalars(tag)
-
-# 最小値とそのステップを計算
-min_event = min(events, key=lambda e: e.value)
-
-print(f"最小 loss = {min_event.value:.6f} @ step = {min_event.step}")
+plt.title("Selected Columns")
+plt.xlabel("Row Index")
+plt.ylabel("Value")
+plt.legend()  # 凡例を追加
+plt.grid(True)
+plt.show()
