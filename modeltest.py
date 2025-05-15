@@ -140,7 +140,7 @@ model_from_script.eval()
 dis_array = np.zeros((1000, 4))
 # print(dis_array)
 start = time.time()
-for i in range(1):
+for i in range(1000):
     # sample_idx = random.randint(int(len(x_data) * 0.8 ),len(x_data)-1)  # 推論したいサンプルのインデックス
     sample_idx = random.randint(0,len(x_data)-1)  # 推論したいサンプルのインデックス
     single_sample = x_change[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
@@ -156,7 +156,7 @@ for i in range(1):
     dis_array[i, :] = distance
 end = time.time()
 
-t = start - end
+t = end - start
 print(t)
 
 print(dis_array)
