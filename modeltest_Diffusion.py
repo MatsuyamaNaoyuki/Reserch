@@ -242,7 +242,7 @@ def main():
 
     #変える部分-----------------------------------------------------------------------------------------------------------------
 
-    log_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\all_use2\logs\loss_test"
+    log_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\all_use3\logs\loss_test"
     filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\mixhit_fortest.pickle"
     usedata = {"motor_angle" : True, "motor_force" : True, 'magsensor' : True}
 

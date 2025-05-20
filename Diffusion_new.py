@@ -18,7 +18,7 @@ from myclass import MyModel
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
 
 def create_sample_indices(episode_ends: np.ndarray, sequence_length: int,
-                          condition_horizon: int, subsample_interval: int = 10):
+                          condition_horizon: int, subsample_interval: int = 1):
     indices = []
     total_required_past = (condition_horizon - 1) * subsample_interval
     total_required = total_required_past + 1 + sequence_length  # +1 for now
@@ -41,7 +41,7 @@ def create_sample_indices(episode_ends: np.ndarray, sequence_length: int,
 
 def sample_sequence(train_data, sequence_length,
                     buffer_start_idx, buffer_end_idx,
-                    condition_horizon=32, subsample_interval=10):
+                    condition_horizon=32, subsample_interval=1):
     result = dict()
     for key, input_arr in train_data.items():
 
@@ -262,7 +262,7 @@ def test(nbatch, noise_pred_net, noise_scheduler):
 def main():
     #---------------------------------------------------------------------------------- --------------------------------------
     usedata = {"motor_angle" : True, "motor_force" : True, 'magsensor' : True}
-    result_dir_name = r"all_use_interval"
+    result_dir_name = r"all_use3"
     data_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\mixhit_3000_with_type.pickle"
     resume_training = False  # 再開したい場合は True にする
 
