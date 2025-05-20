@@ -92,8 +92,8 @@ def data_marge_v2(motiondata, motordata, magsensor):
     # merge_df = pd.merge_asof(magandmotor_df, motion_df, on="timestamp", direction="nearest")
 
 
-    motionandmotor_df = pd.merge_asof(motion_df, motor_df, on="timestamp", direction="nearest")
-    merge_df = pd.merge_asof(motionandmotor_df, mag_df, on="timestamp", direction="nearest")
+    magandmotor_df = pd.merge_asof(mag_df, motor_df, on="timestamp", direction="nearest")
+    merge_df = pd.merge_asof(magandmotor_df, motion_df, on="timestamp", direction="nearest")
     merge_df = merge_df[final_colums]
 
     return merge_df.values.tolist()
@@ -185,13 +185,15 @@ df = df.drop(columns=['Mc1y'])
 df = df.drop(columns=['Mc1z'])
 
 # df = df.head(8670)
-df = df[df.index  % 10 == 0]
+# df = df[df.index  % 10 == 0]
 
-filename = "tube_softfinger_test_10_"
+print(df)
 
-now = datetime.datetime.now()
-filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
-print(df.dtypes)
-# print(type(df[2][10]))
+# filename = "tube_softfinger_test_10_"
 
-# df.to_pickle(filename)
+# now = datetime.datetime.now()
+# filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
+# print(df.dtypes)
+# # print(type(df[2][10]))
+
+# # df.to_pickle(filename)

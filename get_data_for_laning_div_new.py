@@ -104,7 +104,8 @@ def move(Motors, howtomovepath):
         change_angle = pickle.load(fi)
     len_angle = len(change_angle)
     print(change_angle)
-    time_len = [4,4,10,10,7,7, 5,5, 9,9]
+    time_len = None
+    # time_len = [4,4,10,10,7,7, 5,5, 9,9]
     for i, angles in enumerate(change_angle):
         print(angles)
         print(str(i) + "/" +  str(len_angle))
@@ -112,7 +113,7 @@ def move(Motors, howtomovepath):
             Motors.move_to_points(angles, times = 7)
         else:
             Motors.move_to_points(angles, times = time_len[i%len(time_len)])
-        if (i +1) % 500 == 0:
+        if i+1 % 500 == 0:
             write_pkl_event_motor.set()
             write_pkl_event_mag.set()
             write_pkl_event_Mc.set()
@@ -182,9 +183,9 @@ def get_motioncapture(Ms, mcpath):
 # ----------------------------------------------------------------------------------------
 
 
-result_dir = r"temp"
+result_dir = r"0519_mech-newfinger\withhittest"
 
-base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult"
+base_path = r"C:\Users\shigf\Program\data"
 
 # ----------------------------------------------------------------------------------------
 

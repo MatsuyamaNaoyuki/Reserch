@@ -8,7 +8,7 @@ import pickle
 
 
 def move(Motors, ):
-    change_angle = [[0,0,250,0], [0,0,0,0]]
+    change_angle = [[0,0,250,0], [0,0,0,0], [250,0,0,0], [0,0,0,0],[0,250,0,0],[0,0,0,0]]
     len_angle = len(change_angle)
     print(change_angle)
     for i, angles in enumerate(change_angle):
@@ -18,18 +18,5 @@ def move(Motors, ):
 
 
 
-
-# ----------------------------------------------------------------------------------------
-
-result_dir = r"C:\Users\shigf\Program\data\currentOK_test0203\howtomove_50020250127_164123.pickle"
-
-
-# ----------------------------------------------------------------------------------------
-
-
-
-# base_path = r"C:\Users\shigf\Program\data"
-# basepath = os.path.join(base_path, result_dir)
-# howtomovepath = myfunction.find_pickle_files("howtomove", basepath)
 Motors = MyDynamixel()
 move(Motors)
