@@ -183,7 +183,7 @@ def get_motioncapture(Ms, mcpath):
 # ----------------------------------------------------------------------------------------
 
 
-result_dir = r"0519_mech-newfinger\withhittest"
+result_dir = r"0520"
 
 base_path = r"C:\Users\shigf\Program\data"
 

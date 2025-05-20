@@ -187,13 +187,13 @@ df = df.drop(columns=['Mc1z'])
 # df = df.head(8670)
 # df = df[df.index  % 10 == 0]
 
-print(df)
 
-# filename = "tube_softfinger_test_10_"
 
-# now = datetime.datetime.now()
-# filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
-# print(df.dtypes)
-# # print(type(df[2][10]))
+filename = "0519_mech-newfinger_test_10_"
 
-# # df.to_pickle(filename)
+now = datetime.datetime.now()
+filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
+print(df.dtypes)
+# print(type(df[2][10]))
+
+df.to_pickle(filename)
