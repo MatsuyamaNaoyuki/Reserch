@@ -49,32 +49,44 @@ def detect_file_type(filename):
         return 'unknown'  # サポート外の拡張子
 
 
-def make_sequence_tensor(x, y, L=6):
+def make_sequence_tensor_stride(x, y, L=6, stride=1):
+    """
+    過去Lステップをstride間隔で取り出す（飛ばし取り）時系列データセットを作成
 
+    Parameters:
+        x (Tensor): 入力データ（[N, D]）
+        y (Tensor): 出力データ（[N, ?]）
+        L (int): 時系列の長さ
+        stride (int): 間隔（n個飛ばし）
+    """
     seq_x, seq_y = [], []
-    for i in range(L-1, len(x)):
-        seq_x.append(x[i-L+1:i+1])      # 長さ L
-        seq_y.append(y[i])              # 最新の座標
-    return  torch.stack(seq_x), torch.stack(seq_y)
+    total_span = (L - 1) * stride  # 必要な履歴全体の長さ
+
+    for i in range(total_span, len(x)):
+        indices = [i - j * stride for j in reversed(range(L))]  # 取り出すインデックス
+        seq_x.append(x[indices])
+        seq_y.append(y[i])
+    
+    return torch.stack(seq_x), torch.stack(seq_y)
 
 
 
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\alluse\3d_testloss20250417_155613.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data30stride2\3d_testloss20250520_074333.pickle"
 filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortest20250227_135315.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
-
+L = 30
+stride = 2
 testin = None
 #-----------------------------------------------------------------------------------------------------------------
 
 input_dim = 4 * motor_angle + 4 * motor_force + 9 * magsensor
 output_dim = 12
-learning_rate = 0.001
-num_epochs = 200
+
 
 
 
@@ -107,7 +119,7 @@ x_change = (x_data - x_mean) / x_std
 y_change = (y_data - y_mean) / y_std
 
 
-seq_x , seq_y= make_sequence_tensor(x_change, y_data, L=6)
+seq_x, seq_y = make_sequence_tensor_stride(x_change, y_data, L=L, stride=stride)
 
 
 # モデルのロード
@@ -127,11 +139,9 @@ for i in range(1000):
     # sample_idx = random.randint(int(len(x_data) * 0.8 ),len(x_data)-1)  # 推論したいサンプルのインデックス
     sample_idx = random.randint(0,len(seq_x)-1)  # 推論したいサンプルのインデックス
     single_sample = seq_x[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
-    # print(single_sample.shape)
     # 推論を行う（GPUが有効ならGPU上で実行）
     with torch.no_grad():  # 勾配計算を無効化
         prediction = model_from_script(single_sample)
-    # print(prediction)
     # print(y_change[sample_idx])
     single_sample = single_sample * x_std + x_mean
     prediction = prediction * y_std + y_mean

@@ -10,6 +10,7 @@ from myclass import myfunction
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 import matplotlib.pyplot as plt
 import keyboard
+from tqdm import tqdm
 
 
 class BasicBlock1D(nn.Module):
@@ -110,14 +111,17 @@ def train(model, data_loader):
 
     return loss_mean
 
-def make_sequence_tensor(x, y, L=6):
+def make_sequence_tensor_stride(x, y, L, stride):
 
     seq_x, seq_y = [], []
-    for i in range(L-1, len(x)):
-        seq_x.append(x[i-L+1:i+1])      # 長さ L
-        seq_y.append(y[i])              # 最新の座標
-    return torch.utils.data.TensorDataset(
-        torch.stack(seq_x), torch.stack(seq_y))
+    total_span = (L - 1) * stride  # 必要な履歴全体の長さ
+
+    for i in range(total_span, len(x)):
+        indices = [i - j * stride for j in reversed(range(L))]  # 取り出すインデックス
+        seq_x.append(x[indices])
+        seq_y.append(y[i])
+    
+    return torch.utils.data.TensorDataset(torch.stack(seq_x), torch.stack(seq_y))
 
 #testの時のコード
 def test(model, data_loader):
@@ -166,8 +170,10 @@ def save_test(test_dataset, result_dir):
 motor_angle = True
 motor_force = True
 magsensor = True
-original_result_dir = r"tubefinger_mixhit\GRU_alluse"
-data_name = r"tube_softfinger_mixhit_3000_20250411_144433.pickle"
+L = 30 
+stride = 2
+original_result_dir = r"Robomech_GRU\data30stride2"
+data_name = r"mixhit_300020250225_204358.pickle"
 resume_training = False  # 再開したい場合は True にする
 csv = False#今後Flaseに統一
 
@@ -180,10 +186,10 @@ result_dir = os.path.join(base_path, original_result_dir)
 input_dim = 4 * motor_angle + 4 * motor_force + 9 * magsensor
 output_dim = 12
 learning_rate = 0.001
-num_epochs = 200
+num_epochs = 500
 batch_size =256
 r = 0.8
-L = 6
+
 
 # モデルの初期化
 model = ResNetGRU(input_dim=input_dim,output_dim=output_dim, hidden=128)
@@ -233,7 +239,7 @@ scaler_pass = os.path.join(result_dir, "scaler")
 
 
 
-seq_dataset = make_sequence_tensor(x_data, y_data, L=L)
+seq_dataset = make_sequence_tensor_stride(x_data, y_data, L, stride)
 
 
 
@@ -280,35 +286,64 @@ else:
     record_test_loss = []
 
 
-try:
-    for epoch in range(start_epoch, num_epochs):
-        print(epoch)
-        end = time.time()  # 現在時刻（処理完了後）を取得
-        time_diff = end - start  # 処理完了後の時刻から処理開始前の時刻を減算する
-        print(time_diff)  # 処理にかかった時間データを使用
+# try:
+#     for epoch in range(start_epoch, num_epochs):
+#         print(epoch)
+#         end = time.time()  # 現在時刻（処理完了後）を取得
+#         time_diff = end - start  # 処理完了後の時刻から処理開始前の時刻を減算する
+#         print(time_diff)  # 処理にかかった時間データを使用
 
-        train_loss = train(model, train_loader)
-        test_loss = test(model, test_loader)
+#         train_loss = train(model, train_loader)
+#         test_loss = test(model, test_loader)
 
 
-        record_train_loss.append(train_loss)
-        record_test_loss.append(test_loss)
+#         record_train_loss.append(train_loss)
+#         record_test_loss.append(test_loss)
 
-        if epoch%10 == 0:
-            # modelの保存を追加
+#         if epoch%10 == 0:
+#             # modelの保存を追加
 
-            filename = '\\3d_model_epoch' + str(epoch)+"_"
-            filename = result_dir + filename
-            myfunction.save_model(model, filename)
-            print(f"epoch={epoch}, train:{train_loss:.5f}, test:{test_loss:.5f}")
-        if keyboard.is_pressed('q'):
-            print("Training stopped by user.")
-            break
-except KeyboardInterrupt:
-    save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, checkpoint_path)
-    print("finish")
+#             filename = '\\3d_model_epoch' + str(epoch)+"_"
+#             filename = result_dir + filename
+#             myfunction.save_model(model, filename)
+#             print(f"epoch={epoch}, train:{train_loss:.5f}, test:{test_loss:.5f}")
+#         if keyboard.is_pressed('q'):
+#             print("Training stopped by user.")
+#             break
+# except KeyboardInterrupt:
+#     save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, checkpoint_path)
+#     print("finish")
 
-save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, checkpoint_path)
+with tqdm(range(num_epochs), desc='Epoch', initial=start_epoch) as tglobal:
+    try:
+        for epoch in range(start_epoch, num_epochs):
+
+
+            train_loss = train(model, train_loader)
+            test_loss = test(model, test_loader)
+
+
+            record_train_loss.append(train_loss)
+            record_test_loss.append(test_loss)
+
+            if epoch%10 == 0:
+                # modelの保存を追加
+
+                filename = '\\3d_model_epoch' + str(epoch)+"_"
+                filename = result_dir + filename
+                myfunction.save_model(model, filename)
+                tqdm.write(f"epoch={epoch}, train:{train_loss:.5f}, test:{test_loss:.5f}")
+            tglobal.update(1)
+    except KeyboardInterrupt:
+        print("\n[INFO] Detected Ctrl+C - graceful shutdown…")
+        save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, checkpoint_path)
+    finally:
+        # ここは「正常終了」でも「Ctrl+C」でも必ず実行される
+        save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, checkpoint_path)
+        print(f"[INFO] Checkpoint saved to {checkpoint_path}")
+# Weights of the EMA model
+# is used for inference
+
 # myfunction.wirte_pkl(record_test_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_morecam\\3d_testloss")
 # myfunction.wirte_pkl(record_train_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_morecam\\3d_trainloss")
 
