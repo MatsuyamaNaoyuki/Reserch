@@ -235,6 +235,7 @@ def read_csv_to_torch(filename, motor_angle, motor_force, magsensor):
     
     return(tensor_data_x,tensor_data_y)
 
+
 def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
     pickle_file_path = filename
     df = pd.read_pickle(pickle_file_path)
@@ -251,12 +252,8 @@ def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
         input_col.extend(['sensor1','sensor2','sensor3','sensor4','sensor5','sensor6','sensor7','sensor8','sensor9'])
 
     x_value = df.loc[:, input_col]
-    y_value = df.iloc[:, 18:]
+    y_value = df.loc[:, ['Mc2x','Mc2y','Mc2z','Mc3x','Mc3y','Mc3z','Mc4x','Mc4y','Mc4z','Mc5x','Mc5y','Mc5z', ]]
 
-
-    # データを NumPy 配列に変換してから PyTorch テンソルに変換
-    # np_x_value= x_value.values  # NumPy 配列に変換
-    # np_y_value= y_value.values
 
     np_x_value= x_value.to_numpy().astype("float32")  # NumPy 配列に変換
     np_y_value= y_value.to_numpy().astype("float32")
@@ -264,8 +261,10 @@ def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
     tensor_data_x = torch.tensor(np_x_value, dtype=torch.float32)
     tensor_data_y = torch.tensor(np_y_value, dtype=torch.float32)
 
-    return(tensor_data_x,tensor_data_y)
-
+    if "type" in df.columns:
+        return tensor_data_x,tensor_data_y, df["type"]
+    else:
+        return tensor_data_x,tensor_data_y
 
 
 
@@ -332,3 +331,8 @@ def get_min_loss_epoch(file_path):
     filter_testdf = testdf[testdf.index % 10 == 0]
     minid = filter_testdf.idxmin()
     return minid.iloc[-1]
+
+def get_type_change_end(df):
+ 
+    end_indices = df.index[df != df.shift(-1)]
+    return end_indices

@@ -111,17 +111,42 @@ def train(model, data_loader):
 
     return loss_mean
 
-def make_sequence_tensor_stride(x, y, L, stride):
+
+def make_sequence_tensor_stride(x, y, typedf,L, stride):
+    typedf = typedf.tolist()
+    typedf.insert(0, 0)
+    total_span = (L - 1) * stride
 
     seq_x, seq_y = [], []
-    total_span = (L - 1) * stride  # 必要な履歴全体の長さ
 
-    for i in range(total_span, len(x)):
-        indices = [i - j * stride for j in reversed(range(L))]  # 取り出すインデックス
-        seq_x.append(x[indices])
-        seq_y.append(y[i])
-    
-    return torch.utils.data.TensorDataset(torch.stack(seq_x), torch.stack(seq_y))
+    for i in range(len(typedf) - 1):
+        start = typedf[i] + total_span
+        end = typedf[i + 1]
+        if end <= start:
+            continue
+
+        # j の全体リスト
+        js = torch.arange(start, end, device=x.device)
+
+        # indices テンソルをまとめて作成：(len(js), L)
+        relative_indices = torch.arange(L-1, -1, -1, device=x.device) * stride
+        indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
+
+        # <<< ここで indices を表示 >>>
+        print(f"[Group {i}] indices shape: {indices.shape}")
+        print(indices)
+
+        # x と y を一括取得
+        x_seq = x[indices]  # shape: (num_seq, L, D)
+        y_seq = y[js]       # shape: (num_seq, D_out)
+
+        seq_x.append(x_seq)
+        seq_y.append(y_seq)
+
+    seq_x = torch.cat(seq_x, dim=0)
+    seq_y = torch.cat(seq_y, dim=0)
+
+    return torch.utils.data.TensorDataset(seq_x, seq_y)
 
 #testの時のコード
 def test(model, data_loader):
@@ -170,10 +195,10 @@ def save_test(test_dataset, result_dir):
 motor_angle = True
 motor_force = True
 magsensor = True
-L = 30 
-stride = 2
-original_result_dir = r"Robomech_GRU\data30stride2"
-data_name = r"mixhit_300020250225_204358.pickle"
+L = 32 
+stride = 10
+original_result_dir = r"Robomech_GRU\data30stride10type"
+data_name = r"mixhit_3000_with_type.pickle"
 resume_training = False  # 再開したい場合は True にする
 csv = False#今後Flaseに統一
 
@@ -187,7 +212,7 @@ input_dim = 4 * motor_angle + 4 * motor_force + 9 * magsensor
 output_dim = 12
 learning_rate = 0.001
 num_epochs = 500
-batch_size =256
+batch_size =128
 r = 0.8
 
 
@@ -207,7 +232,7 @@ else:
 if csv:
     x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
 else:
-    x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
+    x_data,y_data, typedf = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
 print(len(x_data))
@@ -236,12 +261,10 @@ scaler_pass = os.path.join(result_dir, "scaler")
 
 
 
+type_end_list = myfunction.get_type_change_end(typedf)
 
 
-
-seq_dataset = make_sequence_tensor_stride(x_data, y_data, L, stride)
-
-
+seq_dataset = make_sequence_tensor_stride(x_data, y_data,type_end_list, L, stride)
 
 
 start = time.time()  # 現在時刻（処理開始前）を取得
@@ -264,7 +287,7 @@ if resume_training and os.path.exists(checkpoint_path):
     train_dataset = Subset(seq_dataset, train_indices)
     test_dataset = Subset(seq_dataset, list(test_indices))  
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-    test_loader = DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False)
 
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['model_state_dict'])
@@ -276,7 +299,8 @@ if resume_training and os.path.exists(checkpoint_path):
 
 
 else:
-    train_dataset, test_dataset = torch.utils.data.random_split(seq_dataset, [r,1-r])
+    train_dataset, test_dataset = torch.utils.data.random_split(seq_dataset, [r,1-r],generator=torch.Generator().manual_seed(0))
+
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     test_loader = DataLoader(test_dataset, batch_size=len(test_dataset), shuffle=False)
     myfunction.wirte_pkl(scaler_data, scaler_pass)
@@ -314,38 +338,33 @@ else:
 #     save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, checkpoint_path)
 #     print("finish")
 
-with tqdm(range(num_epochs), desc='Epoch', initial=start_epoch) as tglobal:
-    try:
-        for epoch in range(start_epoch, num_epochs):
+progress = tqdm(total=num_epochs,initial=start_epoch,desc ="Epoch")
+try:
+    for epoch in range(start_epoch, num_epochs):
+        train_loss = train(model, train_loader)
+        test_loss  = test(model , test_loader)
 
+        record_train_loss.append(train_loss)
+        record_test_loss.append(test_loss)
 
-            train_loss = train(model, train_loader)
-            test_loss = test(model, test_loader)
+        # 10 エポックごとにログを出す
+        if epoch % 10 == 0:
+            filename = os.path.join(result_dir, f"3d_model_epoch{epoch}.pth")
+            myfunction.save_model(model, filename)
+            tqdm.write(f"[{epoch}] train={train_loss:.5f} test={test_loss:.5f}")
 
+        progress.update(1)           # ★ これでバーが 1 目盛り進む
+except KeyboardInterrupt:
+    print("\n[INFO] Detected Ctrl+C - graceful shutdown…")
+    save_checkpoint(epoch, model, optimizer,
+                    record_train_loss, record_test_loss, checkpoint_path)
+    raise          # ← ここで例外を再送出すると finally も確実に走る
+finally:
+    save_checkpoint(epoch, model, optimizer,
+                    record_train_loss, record_test_loss, checkpoint_path)
 
-            record_train_loss.append(train_loss)
-            record_test_loss.append(test_loss)
+progress.close()     
 
-            if epoch%10 == 0:
-                # modelの保存を追加
-
-                filename = '\\3d_model_epoch' + str(epoch)+"_"
-                filename = result_dir + filename
-                myfunction.save_model(model, filename)
-                tqdm.write(f"epoch={epoch}, train:{train_loss:.5f}, test:{test_loss:.5f}")
-            tglobal.update(1)
-    except KeyboardInterrupt:
-        print("\n[INFO] Detected Ctrl+C - graceful shutdown…")
-        save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, checkpoint_path)
-    finally:
-        # ここは「正常終了」でも「Ctrl+C」でも必ず実行される
-        save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, checkpoint_path)
-        print(f"[INFO] Checkpoint saved to {checkpoint_path}")
-# Weights of the EMA model
-# is used for inference
-
-# myfunction.wirte_pkl(record_test_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_morecam\\3d_testloss")
-# myfunction.wirte_pkl(record_train_loss, "C:\\Users\\WRS\\Desktop\\Matsuyama\\laerningdataandresult\\sentan_morecam\\3d_trainloss")
 
 myfunction.wirte_pkl(record_test_loss, os.path.join(result_dir, "3d_testloss"))
 myfunction.wirte_pkl(record_train_loss, os.path.join(result_dir, "3d_trainloss"))
