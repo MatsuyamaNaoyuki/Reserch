@@ -49,38 +49,54 @@ def detect_file_type(filename):
         return 'unknown'  # サポート外の拡張子
 
 
-def make_sequence_tensor_stride(x, y, L=6, stride=1):
-    """
-    過去Lステップをstride間隔で取り出す（飛ばし取り）時系列データセットを作成
+def make_sequence_tensor_stride(x, y, typedf,L, stride):
+    typedf = typedf.tolist()
+    typedf.insert(0, 0)
+    total_span = (L - 1) * stride
 
-    Parameters:
-        x (Tensor): 入力データ（[N, D]）
-        y (Tensor): 出力データ（[N, ?]）
-        L (int): 時系列の長さ
-        stride (int): 間隔（n個飛ばし）
-    """
     seq_x, seq_y = [], []
-    total_span = (L - 1) * stride  # 必要な履歴全体の長さ
 
-    for i in range(total_span, len(x)):
-        indices = [i - j * stride for j in reversed(range(L))]  # 取り出すインデックス
-        seq_x.append(x[indices])
-        seq_y.append(y[i])
-    
-    return torch.stack(seq_x), torch.stack(seq_y)
+    for i in range(len(typedf) - 1):
+        start = typedf[i] + total_span
+        end = typedf[i + 1]
+        if end <= start:
+            continue
+
+        # j の全体リスト
+        js = torch.arange(start, end, device=x.device)
+
+        # indices テンソルをまとめて作成：(len(js), L)
+        relative_indices = torch.arange(L-1, -1, -1, device=x.device) * stride
+        indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
+
+        # <<< ここで indices を表示 >>>
+        print(f"[Group {i}] indices shape: {indices.shape}")
+        print(indices)
+
+        # x と y を一括取得
+        x_seq = x[indices]  # shape: (num_seq, L, D)
+        y_seq = y[js]       # shape: (num_seq, D_out)
+
+        seq_x.append(x_seq)
+        seq_y.append(y_seq)
+
+    seq_x = torch.cat(seq_x, dim=0)
+    seq_y = torch.cat(seq_y, dim=0)
+
+    return seq_x, seq_y
 
 
 
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data30stride2\3d_testloss20250520_074333.pickle"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortest20250227_135315.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data30stride1type\3d_testloss20250523_065335.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortesttype.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
 L = 30
-stride = 2
+stride = 1
 testin = None
 #-----------------------------------------------------------------------------------------------------------------
 
@@ -95,9 +111,9 @@ basepath = Path(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult")
 
 
 if pickle:
-    x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
+    x_data,y_data , typedf= myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
 else:
-    x_data,y_data = myfunction.read_csv_to_torch(filename, motor_angle, motor_force, magsensor)
+    x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
 x_data = x_data.to(device)
 y_data = y_data.to(device)
 
@@ -118,8 +134,8 @@ y_std = torch.tensor(scaler_data['y_std']).to(device)
 x_change = (x_data - x_mean) / x_std
 y_change = (y_data - y_mean) / y_std
 
-
-seq_x, seq_y = make_sequence_tensor_stride(x_change, y_data, L=L, stride=stride)
+type_end_list = myfunction.get_type_change_end(typedf)
+seq_x, seq_y = make_sequence_tensor_stride(x_change, y_data,type_end_list, L=L, stride=stride)
 
 
 # モデルのロード
