@@ -189,7 +189,7 @@ df = df.drop(columns=['Mc1z'])
 
 
 
-filename = "0519_mech-newfinger_test_10_"
+filename = "0519_mech-newfinger_withhittest__"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
