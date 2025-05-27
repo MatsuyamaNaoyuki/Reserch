@@ -93,6 +93,8 @@ def data_marge_v2(motiondata, motordata, magsensor):
 
 
     magandmotor_df = pd.merge_asof(mag_df, motor_df, on="timestamp", direction="nearest")
+    print(magandmotor_df)
+    print(motion_df)
     merge_df = pd.merge_asof(magandmotor_df, motion_df, on="timestamp", direction="nearest")
     merge_df = merge_df[final_colums]
 
@@ -189,7 +191,7 @@ df = df.drop(columns=['Mc1z'])
 
 
 
-filename = "0519_mech-newfinger_withhittest__"
+filename = "0526_tubefinger_nohit_1500kai"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'

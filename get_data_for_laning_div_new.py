@@ -113,7 +113,7 @@ def move(Motors, howtomovepath):
             Motors.move_to_points(angles, times = 7)
         else:
             Motors.move_to_points(angles, times = time_len[i%len(time_len)])
-        if i+1 % 500 == 0:
+        if i% 1000 == 0:
             write_pkl_event_motor.set()
             write_pkl_event_mag.set()
             write_pkl_event_Mc.set()
@@ -183,9 +183,9 @@ def get_motioncapture(Ms, mcpath):
 # ----------------------------------------------------------------------------------------
 
 
-result_dir = r"0520"
+# result_dir = r"0520\nohit1500kai"
 
-base_path = r"C:\Users\shigf\Program\data"
+base_path = r"C:\Users\shigf\Program\data\0520\nohit1500"
 
 # ----------------------------------------------------------------------------------------
 
@@ -195,7 +195,7 @@ base_path = r"C:\Users\shigf\Program\data"
 
 
 
-base_path = os.path.join(base_path, result_dir)
+
 print(base_path)
 motorpath = os.path.join(base_path, "motor_")
 magpath = os.path.join(base_path, "mag_")
