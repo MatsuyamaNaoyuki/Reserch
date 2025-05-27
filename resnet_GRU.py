@@ -122,11 +122,11 @@ motor_angle = True
 motor_force = True
 magsensor = True
 L = 32 
-stride = 10
+stride = 1
 
-result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data32stride10type"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_3000_with_type.pickle"
-resume_training = True  # 再開したい場合は True にする
+result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data32stride1lowpath"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_3000_with_type_fliter20250524_163800.pickle"
+resume_training = False   # 再開したい場合は True にする
 
 
 #------------------------------------------------------------------------------------------------------------------------
@@ -219,7 +219,7 @@ try:
 
         # 10 エポックごとにログを出す
         if epoch % 10 == 0:
-            filename = os.path.join(result_dir, f"3d_model_epoch{epoch}.pth")
+            filename = os.path.join(result_dir, f"3d_model_epoch{epoch}_")
             myfunction.save_model(model, filename)
             tqdm.write(f"[{epoch}] train={train_loss:.5f} test={test_loss:.5f}")
 

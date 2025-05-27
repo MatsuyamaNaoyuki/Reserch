@@ -90,13 +90,13 @@ def make_sequence_tensor_stride(x, y, typedf,L, stride):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data30stride1type\3d_testloss20250523_065335.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data32stride10type\3d_testloss20250525_002055.pickle"
 filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortesttype.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
 L = 30
-stride = 1
+stride = 10
 testin = None
 #-----------------------------------------------------------------------------------------------------------------
 
