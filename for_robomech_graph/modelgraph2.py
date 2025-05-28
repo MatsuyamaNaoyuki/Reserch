@@ -89,22 +89,22 @@ fig, ax = plt.subplots(figsize=(12, 5))
 
 # グラフの描画
 # ResNet18：中央に1本（緑）
-ax.bar(x[0] + bar_width/2, 7.53, width=bar_width, color='#00b388', edgecolor='black', label='1フレーム')
+ax.bar(x[0] + bar_width/2, 7.53, width=bar_width, color='#ff7f00', edgecolor='black', label='1フレーム')
 
 # GRU+ResNet18：青とオレンジを左右に
 ax.bar(x[1] - bar_width/2, 6.77, width=bar_width, color='#377eb8', edgecolor='black', label='30フレーム（連続）')
-ax.bar(x[1] + bar_width/2, 8.68, width=bar_width, color='#ff7f00', edgecolor='black', label='30フレーム（10フレーム間隔）')
+ax.bar(x[1] + bar_width/2, 6.28, width=bar_width, color= '#4daf4a', edgecolor='black', label='30フレーム（10フレーム間隔）')
 
 # Diffusion model：青とオレンジを左右に
 ax.bar(x[2] - bar_width/2, 7.27, width=bar_width, color='#377eb8', edgecolor='black')
-ax.bar(x[2] + bar_width/2, 6.19, width=bar_width, color='#ff7f00', edgecolor='black')
+ax.bar(x[2] + bar_width/2, 6.19, width=bar_width, color= '#4daf4a', edgecolor='black')
 
 # 軸と凡例
 xticks_pos = [x[0] + bar_width / 2, x[1], x[2]]       
 ax.set_xticks(xticks_pos)
 ax.set_xticklabels(labels)
 ax.set_ylabel('Estimation Error [mm]')
-ax.set_ylim(0, 12)
+ax.set_ylim(0, 11)
 ax.legend()
 ax.grid(axis='y', linestyle='-', alpha=0.7)
 
