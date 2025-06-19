@@ -185,7 +185,7 @@ def get_motioncapture(Ms, mcpath):
 
 # result_dir = r"0520\nohit1500kai"
 
-base_path = r"C:\Users\shigf\Program\data\0520\nohit1500"
+base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0520_nohit_1500"
 
 # ----------------------------------------------------------------------------------------
 

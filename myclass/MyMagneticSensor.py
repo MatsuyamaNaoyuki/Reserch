@@ -3,7 +3,9 @@ import csv
 import time
 import numpy as np
 from datetime import datetime
-
+print("serial.Serial がある？", hasattr(serial, "Serial"))
+print("serial.SerialException がある？", hasattr(serial, "SerialException"))
+print("場所:", serial.__file__)
 
 class MagneticSensor:
     # def __init__(self):
@@ -25,7 +27,7 @@ class MagneticSensor:
     #     return rowvalue
     
 
-    def __init__(self, port="COM3", baudrate=115200, timeout=1, datanum=10):
+    def __init__(self, port="COM4", baudrate=115200, timeout=1, datanum=10):
         self.port = port
         self.baudrate = baudrate
         self.timeout = timeout

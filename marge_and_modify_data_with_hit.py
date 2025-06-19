@@ -204,7 +204,7 @@ print(df.columns)
 # # df = df.head(8670)
 df = df[df.index  % 10 == 0]
 
-filename = "with_hit"
+filename = "0526_tubefinger_nohit_1500kai"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
