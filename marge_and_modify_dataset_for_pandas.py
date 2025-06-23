@@ -195,7 +195,7 @@ filename = "0526_tubefinger_nohit_1500kai"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
-print(df.dtypes)
+# print(df.dtypes)
 # print(type(df[2][10]))
 
 df.to_pickle(filename)

@@ -79,7 +79,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import japanize_matplotlib
 
-plt.rcParams.update({'font.size': 28})
+plt.rcParams.update({'font.size': 24})
 
 labels = ['ResNet18', 'GRU+ResNet18', 'Diffusion model']
 x = np.arange(len(labels))
@@ -92,8 +92,8 @@ fig, ax = plt.subplots(figsize=(12, 5))
 ax.bar(x[0] + bar_width/2, 7.53, width=bar_width, color='#ff7f00', edgecolor='black', label='1フレーム')
 
 # GRU+ResNet18：青とオレンジを左右に
-ax.bar(x[1] - bar_width/2, 6.77, width=bar_width, color='#377eb8', edgecolor='black', label='30フレーム（連続）')
-ax.bar(x[1] + bar_width/2, 6.28, width=bar_width, color= '#4daf4a', edgecolor='black', label='30フレーム（10フレーム間隔）')
+ax.bar(x[1] - bar_width/2, 6.77, width=bar_width, color='#377eb8', edgecolor='black', label='32フレーム（連続）')
+ax.bar(x[1] + bar_width/2, 6.28, width=bar_width, color= '#4daf4a', edgecolor='black', label='32フレーム（10フレーム間隔）')
 
 # Diffusion model：青とオレンジを左右に
 ax.bar(x[2] - bar_width/2, 7.27, width=bar_width, color='#377eb8', edgecolor='black')

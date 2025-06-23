@@ -26,7 +26,7 @@ def update(frame):
         for ax in (ax1, ax2, ax3):
             ax.cla()                               # 軸をまっさらに
             ax.set_xlim(0, frame_num)
-            ax.set_ylim(300, 900)
+            ax.set_ylim(0, 1100)
 
     # ---------- ここから毎フレームの処理 ----------
     magdata = Ms.get_value()
