@@ -332,7 +332,24 @@ def get_min_loss_epoch(file_path):
     minid = filter_testdf.idxmin()
     return minid.iloc[-1]
 
-def get_type_change_end(df):
+def get_type_change_end(type_vec):
  
-    end_indices = df.index[df != df.shift(-1)]
-    return end_indices
+    if isinstance(type_vec, torch.Tensor):
+        tv = type_vec
+    else:
+        # pandas.Series / ndarray / list → Tensor へ
+        tv = torch.as_tensor(type_vec.to_numpy() if hasattr(type_vec, "to_numpy") else type_vec,
+                             dtype=torch.long)
+
+    # ---------- 型が変わる “次の行” を検出 ----------
+    # 例) diff = [0,0,1,0,1,0] なら変化点はインデックス 2,4
+    diff = torch.diff(tv)
+    change_points = (diff != 0).nonzero(as_tuple=False).flatten() + 1  # +1 で「次の区間の先頭」
+
+    # ---------- pandas.Index にして len(tv) を追加 ----------
+    idx = pd.Index(change_points.tolist(), dtype=int)
+
+    if len(tv) not in idx:
+        idx = idx.append(pd.Index([len(tv)]))
+
+    return idx

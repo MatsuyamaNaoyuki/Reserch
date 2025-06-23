@@ -184,12 +184,12 @@ def make_row_data_with_gosa(dis_array):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger0526\data32_stride1\3d_testloss20250603_134521.pickle"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger0526\data\mixhitfortest_time.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data30stride1type\3d_testloss20250523_065335.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortesttype.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
-L = 32
+L = 30
 stride = 1
 
 touch_vis = False

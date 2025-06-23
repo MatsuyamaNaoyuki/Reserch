@@ -124,8 +124,8 @@ magsensor = True
 L = 32 
 stride = 1
 
-result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\noangle_data32stride1"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_3000_with_type.pickle"
+result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\nohit_noangle_data32stride1"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\no_hit_for_train.pickle"
 resume_training = False   # 再開したい場合は True にする
 
 
