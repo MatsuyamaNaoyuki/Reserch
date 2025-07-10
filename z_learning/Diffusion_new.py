@@ -83,15 +83,16 @@ def unnormalize_data(ndata, stats):
 
 # dataset
 class FingerDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode, traindata = None):
+    def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode,subsample_interval, traindata = None):
+        self.subsample_interval = subsample_interval
         train_split=0.7
         df_dataset = pd.read_pickle(dataset_path).sort_values('time').reset_index(drop=True)
         input_cols = []
         if use_data["motor_angle"]:
             input_cols += [f'rotate{i}' for i in range(1,5)]          # 4
-        if use_data["motor_angle"]:
+        if use_data["motor_force"]:
             input_cols += [f'force{i}' for  i in range(1,5)]          # 4
-        if use_data["motor_angle"]:
+        if use_data["magsensor"]:
             input_cols += [f'sensor{i}' for i in range(1,10)]         # 9  (sensor1‑9)
 
         target_cols = [f'Mc{j}{ax}' for j in range(2,6) for ax in ('x','y','z')]  # 12
@@ -144,7 +145,7 @@ class FingerDataset(torch.utils.data.Dataset):
         # compute start and end of each state-action sequence
         # also handles padding
         indices = create_sample_indices(episode_ends = episode_ends,sequence_length=future_estimate_horizon,
-                                                condition_horizon = condition_horizon)
+                                                condition_horizon = condition_horizon, subsample_interval=self.subsample_interval)
 
 
 
@@ -182,7 +183,7 @@ class FingerDataset(torch.utils.data.Dataset):
 
         # get nomralized data using these indices
         nsample = sample_sequence(train_data=self.normalized_data, sequence_length=self.condition_horizon,
-                                  buffer_start_idx=buffer_start_idx, buffer_end_idx=buffer_end_idx,
+                                  buffer_start_idx=buffer_start_idx, buffer_end_idx=buffer_end_idx,condition_horizon=self.condition_horizon,subsample_interval=self.subsample_interval
                                   )
 
 
@@ -262,10 +263,11 @@ def test(nbatch, noise_pred_net, noise_scheduler):
 def main():
     #---------------------------------------------------------------------------------- --------------------------------------
     usedata = {"motor_angle" : True, "motor_force" : True, 'magsensor' : True}
-    result_dir_name = r"all_use3"
+    # result_dir_name = r"interval1"
+    result_dir_name = r"interval10"
     data_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\mixhit_3000_with_type.pickle"
     resume_training = False  # 再開したい場合は True にする
-
+    SUBSAMPLE = 1 
 
     #------------------------------------------------------------------------------------------------------------------------
     result_dir = os.path.join(os.path.dirname(data_path),result_dir_name)
@@ -283,8 +285,8 @@ def main():
     now_estimate_horizon = 1
     condition_dim = 4 * usedata["motor_angle"] + 4 * usedata["motor_force"] + 9 * usedata["magsensor"]
     estimation_dim = 12
-    train_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "train")
-    test_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "val", traindata=train_data)
+    train_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "train", subsample_interval=SUBSAMPLE)
+    test_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "val", traindata=train_data, subsample_interval=SUBSAMPLE)
 
     #stasの保存
     stats_pass = os.path.join(result_dir, "stats")

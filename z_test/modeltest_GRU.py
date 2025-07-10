@@ -49,12 +49,18 @@ def detect_file_type(filename):
         return 'unknown'  # サポート外の拡張子
 
 
+
 def make_sequence_tensor_stride(x, y, typedf,L, stride):
     typedf = typedf.tolist()
     typedf.insert(0, 0)
     total_span = (L - 1) * stride
 
     seq_x, seq_y = [], []
+    
+    nan_mask = torch.isnan(x).any(dim=1)
+    nan_rows = nan_mask.nonzero(as_tuple=True)[0].tolist()
+
+    nan_rows_set = set(nan_rows)  # 高速化のため set にしておく
 
     for i in range(len(typedf) - 1):
         start = typedf[i] + total_span
@@ -62,41 +68,59 @@ def make_sequence_tensor_stride(x, y, typedf,L, stride):
         if end <= start:
             continue
 
-        # j の全体リスト
         js = torch.arange(start, end, device=x.device)
-
-        # indices テンソルをまとめて作成：(len(js), L)
         relative_indices = torch.arange(L-1, -1, -1, device=x.device) * stride
         indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
 
-        # <<< ここで indices を表示 >>>
-        print(f"[Group {i}] indices shape: {indices.shape}")
-        print(indices)
+        # --- ここで NaN 系列を除外する ---
+        # indices を CPU に移動して numpy に変換
+        indices_np = indices.cpu().numpy()
+        # nan_rows が含まれているか判定
+        valid_mask = []
+        for row in indices_np:
+            if any(idx in nan_rows_set for idx in row):
+                valid_mask.append(False)  # nan を含む → 無効
+            else:
+                valid_mask.append(True)   # nan を含まない → 有効
 
-        # x と y を一括取得
-        x_seq = x[indices]  # shape: (num_seq, L, D)
-        y_seq = y[js]       # shape: (num_seq, D_out)
+        valid_mask = torch.tensor(valid_mask, device=x.device)
+
+        # 有効な indices だけ残す
+        indices = indices[valid_mask]
+        js = js[valid_mask]
+
+        if indices.shape[0] == 0:
+            continue  # 有効な系列がなければスキップ
+    
+        x_seq = x[indices]  # shape: (num_seq_valid, L, D)
+        y_seq = y[js]       # shape: (num_seq_valid, D_out)
 
         seq_x.append(x_seq)
         seq_y.append(y_seq)
+            
+  
+        
+    
 
     seq_x = torch.cat(seq_x, dim=0)
     seq_y = torch.cat(seq_y, dim=0)
 
-    return seq_x, seq_y
+
+    return torch.utils.data.TensorDataset(seq_x, seq_y)
+
 
 
 
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger0526\data32_stride1\3d_testloss20250603_134521.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger_mixhit\GRU_alluse\3d_testloss20250417_171344.pickle"
 filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger0526\data\mixhitfortest_time.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
 L = 32
-stride = 10
+stride = 1
 testin = None
 #-----------------------------------------------------------------------------------------------------------------
 

@@ -15,31 +15,7 @@ from typing import Union
 from torch.utils.tensorboard import SummaryWriter
 from myclass import myfunction
 from myclass import MyModel
-from tensorboard.backend.event_processing.event_accumulator import EventAccumulator
-
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
-
-
-
-
-def culc_gosa(prediction, ydata):
-    dis_array = np.zeros(4)
-    # print(ydata)
-    for i in range(4):
-        pointpred =np.array([prediction[i * 3],prediction[i * 3 + 1],prediction[i * 3 + 2]])
-        pointydata = np.array([ydata[3 * i], ydata[3 * i + 1], ydata[3 * i + 2]])
-        distance = np.linalg.norm(pointpred - pointydata)
-        dis_array[i] = distance
-    return dis_array
-
-
-def get_min_step(log_dir):
-    ea = EventAccumulator(log_dir)
-    ea.Reload()
-    tag = "loss"
-    events = ea.Scalars(tag)
-    min_event = min(events, key=lambda e: e.value)
-    return min_event.step
 
 def create_sample_indices(episode_ends: np.ndarray, sequence_length: int,
                           condition_horizon: int, subsample_interval: int = 1):
@@ -82,7 +58,6 @@ def sample_sequence(train_data, sequence_length,
         result[key] = data
     return result
 
-
 # normalize data
 def get_data_stats(data):
     data = data.reshape(-1,data.shape[-1])
@@ -101,14 +76,13 @@ def normalize_data(data, stats):
     return ndata
 
 def unnormalize_data(ndata, stats):
-    ndata = np.array(ndata)
     ndata = (ndata + 1) / 2
     data = ndata * (stats['max'] - stats['min']) + stats['min']
     return data
 
 # dataset
 class FingerDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode, subsample_interval,train_stats = None):
+    def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode,subsample_interval, traindata = None):
         self.subsample_interval = subsample_interval
         train_split=0.7
         df_dataset = pd.read_pickle(dataset_path).sort_values('time').reset_index(drop=True)
@@ -171,6 +145,9 @@ class FingerDataset(torch.utils.data.Dataset):
         # also handles padding
         indices = create_sample_indices(episode_ends = episode_ends,sequence_length=future_estimate_horizon,
                                                 condition_horizon = condition_horizon, subsample_interval=self.subsample_interval)
+
+
+
         
         # compute statistics and normalized data to [-1,1]
         if mode == "train":
@@ -180,7 +157,7 @@ class FingerDataset(torch.utils.data.Dataset):
 
             
         else:
-            stats = train_stats
+            stats = traindata.stats
         normalized_data = dict()
         for key, data in train_data.items():
             normalized_data[key] = normalize_data(data, stats[key])
@@ -205,58 +182,103 @@ class FingerDataset(torch.utils.data.Dataset):
 
         # get nomralized data using these indices
         nsample = sample_sequence(train_data=self.normalized_data, sequence_length=self.future_estimate_horizon,
-                                  buffer_start_idx=buffer_start_idx, buffer_end_idx=buffer_end_idx,subsample_interval=self.subsample_interval
+                                  buffer_start_idx=buffer_start_idx, buffer_end_idx=buffer_end_idx,condition_horizon=self.condition_horizon,subsample_interval=self.subsample_interval
                                   )
+
+
         # discard unused conditionervations
         # nsample['condition'] = nsample['condition'][:self.condition_horizon,:]
         # nsample['action'] = nsample['action'][:self.future_estimate_horizon, :]  # ←これが必要！
         
         return nsample
     
-def sample_denoised_action(model, condition, noise_scheduler, device, num_diffusion_steps=100):
-    model.eval()
-    with torch.no_grad():
-        if isinstance(condition, np.ndarray):
-            condition = torch.tensor(condition, dtype=torch.float32)
-        condition = condition.unsqueeze(0)  # (1, 32, 17)
-        global_cond = condition.flatten(start_dim=1).to(device)
-
-        # 初期ノイズ: (1, 12, 16)
-        x = torch.randn((1, 16, model.final_conv[-1].out_channels), device=device)
-
-        for t in reversed(range(num_diffusion_steps)):
-            t_tensor = torch.full((1,), t, device=device, dtype=torch.long)
-            pred_noise = model(x, t_tensor, global_cond)
-            x = noise_scheduler.step(pred_noise, t_tensor, x).prev_sample
-
-        # x: (1, 12, 16) → (16, 12)
-        x = x.squeeze(0)
-
-        # 最初の1ステップだけ抽出
-        last_step = x[0]  # shape = (12,)
-        return last_step.cpu()
+def save_checkpoint(path, epoch, model, ema, optimizer, lr_scheduler, stats, global_step):
+    torch.save({
+        "epoch": epoch,
+        "global_step": global_step,
+        "model_state": model.state_dict(),
+        "ema_state": ema.state_dict(),
+        "optimizer_state": optimizer.state_dict(),
+        "lr_scheduler_state": lr_scheduler.state_dict(),
+        "stats": stats,
+    }, path)
 
 
+def train(nbatch, noise_pred_net, noise_scheduler,  optimizer,lr_scheduler,ema):
+    #deviceに送る
+    ncondition = nbatch['condition'].to(device)
+    naction = nbatch['action'].to(device)
+    B = ncondition.shape[0]
+    
+    #（B,32*17）に変更
+    condition_cond = ncondition.flatten(start_dim=1).to(device) 
+
+    #ノイズの生成
+    noise = torch.randn(naction.shape, device=device)
+
+
+    timesteps = torch.randint(0, noise_scheduler.config.num_train_timesteps,(B,), device=device).long()
+
+    #ノイズを付加
+    noisy_actions = noise_scheduler.add_noise(naction, noise, timesteps)
+
+    #ノイズを推定
+    noise_pred = noise_pred_net(noisy_actions, timesteps, global_cond=condition_cond)
+
+    # L2 loss
+    loss = nn.functional.mse_loss(noise_pred, noise)
+
+    # optimize
+    loss.backward()
+    optimizer.step()
+    optimizer.zero_grad()
+
+    lr_scheduler.step()
+    ema.step(noise_pred_net.parameters())
+    return loss
+
+
+def test(nbatch, noise_pred_net, noise_scheduler):
+    ncondition = nbatch['condition'].to(device)
+    naction    = nbatch['action'].to(device)
+    B = ncondition.size(0)
+
+    # FiLM conditioning vector
+    cond_vec = ncondition.flatten(start_dim=1)
+
+    # forward diffusion
+    noise = torch.randn_like(naction)
+    t     = torch.randint(0, noise_scheduler.config.num_train_timesteps, (B,), device=device).long()
+    noisy = noise_scheduler.add_noise(naction, noise, t)
+
+    # prediction
+    pred = noise_pred_net(noisy, t, global_cond=cond_vec)
+
+    # loss
+    loss = F.mse_loss(pred, noise, reduction="mean")
+    return loss
+
+        
 
 
 def main():
-
-    #変える部分-----------------------------------------------------------------------------------------------------------------
-
-    log_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\interval10\logs\loss_test"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\mixhit_fortest.pickle"
+    #---------------------------------------------------------------------------------- --------------------------------------
     usedata = {"motor_angle" : True, "motor_force" : True, 'magsensor' : True}
-    subsample_interval = 10
-    #subsample_intervalをさがして変える
-    #-----------------------------------------------------------------------------------------------------------------
-    resultdir = os.path.dirname(os.path.dirname(log_dir))
+    result_dir_name = r"interval1_new"
+    # result_dir_name = r"temp"
+    data_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\mixhit_3000_with_type.pickle"
+    resume_training = False  # 再開したい場合は True にする
+    SUBSAMPLE = 1 
 
-    num_epochs = 10
+    #------------------------------------------------------------------------------------------------------------------------
+    result_dir = os.path.join(os.path.dirname(data_path),result_dir_name)
+
+    num_epochs = 50
     BATCH_SIZE      = 64          # GPU メモリに合わせて調整
     NUM_WORKERS     = min(os.cpu_count(), 8)  # CPU コア数以内
     PIN_MEMORY      = torch.cuda.is_available()
     DROP_LAST       = True  
-
+    
 
 
     future_estimate_horizon = 16
@@ -264,60 +286,104 @@ def main():
     now_estimate_horizon = 1
     condition_dim = 4 * usedata["motor_angle"] + 4 * usedata["motor_force"] + 9 * usedata["magsensor"]
     estimation_dim = 12
+    train_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "train", subsample_interval=SUBSAMPLE)
+    test_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "val", traindata=train_data, subsample_interval=SUBSAMPLE)
 
+    #stasの保存
+    stats_pass = os.path.join(result_dir, "stats")
+    myfunction.wirte_pkl(train_data.stats, stats_pass)
 
-    train_stats_dir = myfunction.find_pickle_files("stats", resultdir)
-    train_stats = pd.read_pickle(train_stats_dir)
-
-    test_data = FingerDataset(dataset_path = filename, future_estimate_horizon=future_estimate_horizon,
-                            condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "test", train_stats=train_stats, subsample_interval= subsample_interval)
-
-    minstep = str(get_min_step(log_dir))
-    print(f"使用したephoch:{minstep}")
-    modelpath = myfunction.find_pickle_files("epoch" + minstep + "_", directory=resultdir, extension=".pth")
+    
+    
+    train_loader = DataLoader(dataset=train_data,batch_size=BATCH_SIZE, shuffle=True, 
+                                num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY, drop_last=DROP_LAST, persistent_workers=NUM_WORKERS > 0,)
+    test_loader = DataLoader(dataset=test_data,batch_size=BATCH_SIZE, shuffle=False, 
+                                num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY, drop_last=DROP_LAST, persistent_workers=NUM_WORKERS > 0,)
+    # create network object
     noise_pred_net = MyModel.ConditionalUnet1D(input_dim=estimation_dim, global_cond_dim=condition_dim*condition_horizon).to(device)
-
-    noise_pred_net.load_state_dict(torch.load(modelpath, weights_only= True))
     num_diffusion_iters = 100
     noise_scheduler = DDPMScheduler(num_train_timesteps=num_diffusion_iters,
                                     beta_schedule='squaredcos_cap_v2',clip_sample=True,prediction_type='epsilon')
-    for name in dir(noise_scheduler):
-        attr = getattr(noise_scheduler, name)
-        if isinstance(attr, torch.Tensor):
-            setattr(noise_scheduler, name, attr.to(device))
-# 他にも scheduler によって必要なテンソルがあるかも（debug print で確認）
+    ema = EMAModel(parameters=noise_pred_net.parameters(), power=0.75)
 
-    noise_pred_net.eval()
 
-    roundtimes = len(test_data)
 
-    dis_array = np.zeros((roundtimes, 4))
-    prediction_array = np.zeros((roundtimes, 12))
-    real_val_array = np.zeros((roundtimes, 12))
-    start= time.time()  # 現在時刻（処理完了後）を取得
+    # Standard ADAM optimizer
+    # Note that EMA parametesr are not optimized
 
-    with tqdm(range(roundtimes), desc='Epoch') as tglobal:
-        for i in tglobal:
-            with torch.no_grad():
-                prediction =  sample_denoised_action(noise_pred_net, test_data[i]['condition'],noise_scheduler,device)
-            prediction = unnormalize_data(prediction, train_stats['action'])
-            prediction_array[i,:] = prediction
-            real_val = test_data[i]['action']
-            real_val = unnormalize_data(real_val, train_stats['action'])
-            real_val = real_val[0]
-            real_val_array[i, :] = real_val
-            distance = culc_gosa(prediction.tolist(), real_val.tolist())
-            dis_array[i, :] = distance
+    
+    optimizer = torch.optim.AdamW(params=noise_pred_net.parameters(),lr=1e-4, weight_decay=1e-6)
 
-    end = time.time()
-    t = (end - start) / roundtimes
-    column_means = np.mean(dis_array, axis=0)
-    print("列ごとの平均:", column_means.round(2))
-    print("かかった時間:", t)
-    myfunction.wirte_pkl(prediction_array, "prediction")
-    myfunction.wirte_pkl(real_val_array, "real_val")
+    # Cosine LR schedule with linear warmup
+    lr_scheduler = get_scheduler(name='cosine', optimizer=optimizer, num_warmup_steps=500,
+                                num_training_steps=len(train_loader) * num_epochs)
+
+
+    start_epoch = 0
+    checkpoint_path = os.path.join(result_dir, "ckpt_latest.pth")
+    global_step = start_epoch * len(train_loader)
+    if resume_training and os.path.exists(checkpoint_path):
+        ckpt = torch.load(checkpoint_path, map_location=device)
+        start_epoch = ckpt["epoch"]
+        noise_pred_net.load_state_dict(ckpt["model"])
+        ema.load_state_dict(ckpt["ema"])
+        optimizer.load_state_dict(ckpt["optimizer"])
+        lr_scheduler.load_state_dict(ckpt["scheduler"])
+        global_step = ckpt.get("global_step", start_epoch * len(train_loader))
+
+    log_dir = os.path.join(result_dir, "logs")
+    writer = SummaryWriter(log_dir=log_dir)
+    global_step = start_epoch * len(train_loader)
+    train_loss_mean = 0
+    test_loss_mean = 0
+
+    with tqdm(range(num_epochs), desc='Epoch', initial=start_epoch) as tglobal:
+        try:
+            for epoch_idx in range(start_epoch, num_epochs):
+                with tqdm(train_loader, desc='Batch', leave=False) as tepoch:
+                    for nbatch in tepoch:
+                        noise_pred_net.train()
+                        train_loss = train(nbatch=nbatch, noise_scheduler=noise_scheduler, noise_pred_net=noise_pred_net, 
+                                     optimizer=optimizer, lr_scheduler=lr_scheduler, ema=ema)
+                        train_loss_mean += train_loss.item()
+
+                        global_step += 1
+
+                        if (global_step + 1) % 1000 == 0:
+                            noise_pred_net.eval()
+                            with torch.no_grad():
+                                for nbatch in test_loader:
+                                    test_loss = test(nbatch=nbatch, noise_scheduler=noise_scheduler, noise_pred_net=noise_pred_net)
+                                    test_loss_mean += test_loss.item()
+                            train_loss_mean = train_loss_mean / 1000
+                            test_loss_mean = test_loss_mean / 1000
+                            writer.add_scalars("loss", {'train':train_loss_mean, 'test':test_loss_mean}, global_step)
+                            filename = '3d_model_epoch' + str(global_step)+"_.pth"
+                            filename = os.path.join(result_dir, filename)
+                            ema_noise_pred_net = noise_pred_net
+                            ema.copy_to(ema_noise_pred_net.parameters())
+                            torch.save(ema_noise_pred_net.state_dict(), filename)
+                        tepoch.update(1)
+
+                tglobal.update(1)
+        except KeyboardInterrupt:
+            print("\n[INFO] Detected Ctrl+C - graceful shutdown…")
+
+        finally:
+            # ここは「正常終了」でも「Ctrl+C」でも必ず実行される
+            save_checkpoint(checkpoint_path, epoch_idx + 1, noise_pred_net,
+                ema, optimizer, lr_scheduler, train_data.stats, global_step)
+            print(f"[INFO] Checkpoint saved to {checkpoint_path}")
+    # Weights of the EMA model
+    # is used for inference
+    writer.close()
+
+
+
+
 if __name__ == '__main__':
     main()
 
 
- 
+
+

@@ -184,12 +184,12 @@ def make_row_data_with_gosa(dis_array):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data30stride1type\3d_testloss20250523_065335.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\alluse_data32stride10\3d_testloss20250624_094326.pickle"
 filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortesttype.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
-L = 30
+L = 32
 stride = 1
 
 touch_vis = False
@@ -246,8 +246,13 @@ model_from_script.eval()
 # x_data から 1 サンプルを取得（例: 0番目のサンプル）
 dis_array1 = []
 dis_array2 = []
+
+print(f"seq_x の長さ: {len(seq_x)}")
+print(f"first_group_len: {first_group_len}")
 # print(dis_array)
 
+
+start = time.time()
 for i in range(len(seq_x)):
     sample_idx = i  # 推論したいサンプルのインデックス
     single_sample = seq_x[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
@@ -266,13 +271,13 @@ dis_array1 = np.array(dis_array1)
 dis_array2 = np.array(dis_array2)
 
 
-# dis_array = np.concatenate([dis_array1, dis_array2], axis=0)
-column_means = np.mean(dis_array2, axis=0)
+dis_array = np.concatenate([dis_array1, dis_array2], axis=0)
+column_means = np.mean(dis_array, axis=0)
 print("列ごとの平均:", column_means.round(2))
 
 
 
-
+print(end-start)
 # if touch_vis:
 #     make_touch_hist()
 
