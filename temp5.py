@@ -17,27 +17,66 @@ from myclass import myfunction
 from myclass import MyModel
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
 
-def create_sample_indices(episode_ends: np.ndarray, sequence_length: int,
+def create_sample_indices(typedf: np.ndarray, sequence_length: int,
                           condition_horizon: int, data,  subsample_interval: int = 1):
+    typedf = typedf.tolist()
+    typedf.insert(0, 0)
+  
     indices = []
+    L=sequence_length + condition_horizon
     total_required_past = (condition_horizon - 1) * subsample_interval
-    total_required = total_required_past + 1 + sequence_length  # +1 for now
+    total_span = total_required_past + 1 + sequence_length  # +1 for now
 
-    for i in range(len(episode_ends)):
-        start_idx = 0 if i == 0 else episode_ends[i - 1]
-        end_idx = episode_ends[i]
-        episode_length = end_idx - start_idx
+    nan_mask = np.isnan(data).any(axis=1)
+    nan_rows = np.nonzero(nan_mask)[0].tolist()
 
-        for t in range(start_idx + total_required_past, end_idx - sequence_length):
-            # この時刻 t を現在としたときに、過去と未来の情報が取れるかをチェック
-            buffer_start = t - total_required_past
-            buffer_end = t + sequence_length + 1
-            if buffer_end > end_idx:
-                continue
 
-            indices.append([buffer_start, buffer_end,0, buffer_end - buffer_start])
-    return np.array(indices)
+    nan_rows_set = set(nan_rows)  # 高速化のため set にしておく
 
+    indiceslist = []
+    for i in range(len(typedf) - 1):
+        start = typedf[i] + total_span
+        end = typedf[i + 1]
+        if end <= start:
+            continue
+
+        js = torch.arange(start, end, device=data.device)
+        
+        relative_indices = torch.arange(L-1, -1, -1, device=data.device) * subsample_interval
+        
+        indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
+
+  
+        # # --- ここで NaN 系列を除外する ---
+        # indices を CPU に移動して numpy に変換
+        indices_np = indices.cpu().numpy()
+        # nan_rows が含まれているか判定
+        valid_mask = []
+        for row in indices_np:
+            if any(idx in nan_rows_set for idx in row):
+                valid_mask.append(False)  # nan を含む → 無効
+            else:
+                valid_mask.append(True)   # nan を含まない → 有効
+
+        valid_mask = torch.tensor(valid_mask, device=data.device)
+
+        # 有効な indices だけ残す
+        indices = indices[valid_mask]
+
+
+        if indices.shape[0] == 0:
+            continue  # 有効な系列がなければスキップ
+        indiceslist.append(indices)
+
+
+
+    indiceslist = torch.cat(indiceslist, dim=0)
+    result = torch.stack([indiceslist[:, 0], indiceslist[:, -1]], dim=1).numpy()
+    print(result)
+    print(type(result))
+    return result
+
+      
 
 def sample_sequence(train_data, sequence_length,
                     buffer_start_idx, buffer_end_idx,
@@ -85,7 +124,7 @@ class FingerDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode,subsample_interval, traindata = None):
         self.subsample_interval = subsample_interval
         train_split=0.9
-        df_dataset = pd.read_pickle(dataset_path).sort_values('time').reset_index(drop=True)
+        df_dataset = pd.read_pickle(dataset_path)
         input_cols = []
         if use_data["motor_angle"]:
             input_cols += [f'rotate{i}' for i in range(1,5)]          # 4
@@ -128,8 +167,8 @@ class FingerDataset(torch.utils.data.Dataset):
 
 
             # 最後に結合する
-        episode_ends = [len(row) for row in X_split]
-        episode_ends = np.array(episode_ends).cumsum()
+        typedf = [len(row) for row in X_split]
+        typedf = np.array(typedf).cumsum()
         
 
         X_data = np.concatenate(X_split, axis=0)
@@ -143,11 +182,11 @@ class FingerDataset(torch.utils.data.Dataset):
 
         # compute start and end of each state-action sequence
         # also handles padding
-        indices = create_sample_indices(episode_ends = episode_ends,sequence_length=future_estimate_horizon,
+        indices = create_sample_indices(typedf= typedf,sequence_length=future_estimate_horizon,
                                                 condition_horizon = condition_horizon, subsample_interval=self.subsample_interval,
                                                 data = X_data)
 
-        print(indices)
+
 
         
         # compute statistics and normalized data to [-1,1]
@@ -170,7 +209,7 @@ class FingerDataset(torch.utils.data.Dataset):
         self.future_estimate_horizon = future_estimate_horizon
         self.now_estimate_horizon = now_estimate_horizon
         self.condition_horizon = condition_horizon
-        print(self.normalized_data)
+        # print(self.normalized_data)
  
 
     def __len__(self):
@@ -179,8 +218,7 @@ class FingerDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         # get the start/end indices for this datapoint
-        buffer_start_idx, buffer_end_idx, \
-            sample_start_idx, sample_end_idx = self.indices[idx]
+        buffer_start_idx, buffer_end_idx= self.indices[idx]
 
         # get nomralized data using these indices
         nsample = sample_sequence(train_data=self.normalized_data, sequence_length=self.future_estimate_horizon,

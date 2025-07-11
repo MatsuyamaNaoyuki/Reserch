@@ -17,26 +17,63 @@ from myclass import myfunction
 from myclass import MyModel
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
 
-def create_sample_indices(episode_ends: np.ndarray, sequence_length: int,
-                          condition_horizon: int, subsample_interval: int = 1):
+def create_sample_indices(typedf: np.ndarray, sequence_length: int,
+                          condition_horizon: int, data,  subsample_interval: int = 1):
+    typedf = typedf.tolist()
+    typedf.insert(0, 0)
+  
     indices = []
+    L=sequence_length + condition_horizon
     total_required_past = (condition_horizon - 1) * subsample_interval
-    total_required = total_required_past + 1 + sequence_length  # +1 for now
+    total_span = total_required_past + 1 + sequence_length  # +1 for now
 
-    for i in range(len(episode_ends)):
-        start_idx = 0 if i == 0 else episode_ends[i - 1]
-        end_idx = episode_ends[i]
-        episode_length = end_idx - start_idx
+    nan_mask = np.isnan(data).any(axis=1)
+    nan_rows = np.nonzero(nan_mask)[0].tolist()
 
-        for t in range(start_idx + total_required_past, end_idx - sequence_length):
-            # この時刻 t を現在としたときに、過去と未来の情報が取れるかをチェック
-            buffer_start = t - total_required_past
-            buffer_end = t + sequence_length + 1
-            if buffer_end > end_idx:
-                continue
 
-            indices.append([buffer_start, buffer_end,0, buffer_end - buffer_start])
-    return np.array(indices)
+    nan_rows_set = set(nan_rows)  # 高速化のため set にしておく
+
+    indiceslist = []
+    for i in range(len(typedf) - 1):
+        start = typedf[i] + total_span
+        end = typedf[i + 1]
+        if end <= start:
+            continue
+
+        js = torch.arange(start, end, device=data.device)
+        
+        relative_indices = torch.arange(L-1, -1, -1, device=data.device) * subsample_interval
+        
+        indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
+
+  
+        # # --- ここで NaN 系列を除外する ---
+        # indices を CPU に移動して numpy に変換
+        indices_np = indices.cpu().numpy()
+        # nan_rows が含まれているか判定
+        valid_mask = []
+        for row in indices_np:
+            if any(idx in nan_rows_set for idx in row):
+                valid_mask.append(False)  # nan を含む → 無効
+            else:
+                valid_mask.append(True)   # nan を含まない → 有効
+
+        valid_mask = torch.tensor(valid_mask, device=data.device)
+
+        # 有効な indices だけ残す
+        indices = indices[valid_mask]
+
+
+        if indices.shape[0] == 0:
+            continue  # 有効な系列がなければスキップ
+        indiceslist.append(indices)
+
+
+
+    indiceslist = torch.cat(indiceslist, dim=0)
+    result = torch.stack([indiceslist[:, 0], indiceslist[:, -1]], dim=1).numpy()
+
+    return result
 
 
 def sample_sequence(train_data, sequence_length,
@@ -84,8 +121,8 @@ def unnormalize_data(ndata, stats):
 class FingerDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode,subsample_interval, traindata = None):
         self.subsample_interval = subsample_interval
-        train_split=0.7
-        df_dataset = pd.read_pickle(dataset_path).sort_values('time').reset_index(drop=True)
+        train_split=0.9
+        df_dataset = pd.read_pickle(dataset_path)
         input_cols = []
         if use_data["motor_angle"]:
             input_cols += [f'rotate{i}' for i in range(1,5)]          # 4
@@ -115,21 +152,21 @@ class FingerDataset(torch.utils.data.Dataset):
 
             N_cls = len(X_cls)
             idx1 = int(N_cls * train_split)
-            idx2 = int(N_cls * (train_split + (1-train_split)/2))
+
             if mode == "train":
                 X_split.append(X_cls[:idx1])
                 Y_split.append(Y_cls[:idx1])
             elif mode == "val":
-                X_split.append(X_cls[idx1:idx2])
-                Y_split.append(Y_cls[idx1:idx2])
+                X_split.append(X_cls[idx1:])
+                Y_split.append(Y_cls[idx1:])
             elif mode == "test":
                 X_split.append(X_cls[:])
                 Y_split.append(Y_cls[:])
 
 
             # 最後に結合する
-        episode_ends = [len(row) for row in X_split]
-        episode_ends = np.array(episode_ends).cumsum()
+        typedf = [len(row) for row in X_split]
+        typedf = np.array(typedf).cumsum()
         
 
         X_data = np.concatenate(X_split, axis=0)
@@ -139,28 +176,35 @@ class FingerDataset(torch.utils.data.Dataset):
          
         train_data = {'action': Y_data,'condition': X_data}
         
-       
+        
+        
 
         # compute start and end of each state-action sequence
         # also handles padding
-        indices = create_sample_indices(episode_ends = episode_ends,sequence_length=future_estimate_horizon,
-                                                condition_horizon = condition_horizon, subsample_interval=self.subsample_interval)
+        indices = create_sample_indices(typedf= typedf,sequence_length=future_estimate_horizon,
+                                                condition_horizon = condition_horizon, subsample_interval=self.subsample_interval,
+                                                data = X_data)
 
 
 
-        
+
         # compute statistics and normalized data to [-1,1]
         if mode == "train":
+            x_nan_mask = np.isnan(X_data).any(axis=1)
+            mask = ~x_nan_mask
+            x_data_clean = X_data[mask]
+            y_data_clean = Y_data[mask]
             stats = dict()
-            for key, data in train_data.items():
-                stats[key] = get_data_stats(data)
+            stats["action"] = get_data_stats(y_data_clean)
+            stats["condition"] = get_data_stats(x_data_clean)
 
-            
+
         else:
             stats = traindata.stats
         normalized_data = dict()
         for key, data in train_data.items():
             normalized_data[key] = normalize_data(data, stats[key])
+
 
 
         self.indices = indices
@@ -169,6 +213,7 @@ class FingerDataset(torch.utils.data.Dataset):
         self.future_estimate_horizon = future_estimate_horizon
         self.now_estimate_horizon = now_estimate_horizon
         self.condition_horizon = condition_horizon
+        # print(self.normalized_data)
  
 
     def __len__(self):
@@ -177,8 +222,7 @@ class FingerDataset(torch.utils.data.Dataset):
 
     def __getitem__(self, idx):
         # get the start/end indices for this datapoint
-        buffer_start_idx, buffer_end_idx, \
-            sample_start_idx, sample_end_idx = self.indices[idx]
+        buffer_start_idx, buffer_end_idx= self.indices[idx]
 
         # get nomralized data using these indices
         nsample = sample_sequence(train_data=self.normalized_data, sequence_length=self.future_estimate_horizon,
@@ -208,6 +252,8 @@ def train(nbatch, noise_pred_net, noise_scheduler,  optimizer,lr_scheduler,ema):
     #deviceに送る
     ncondition = nbatch['condition'].to(device)
     naction = nbatch['action'].to(device)
+
+
     B = ncondition.shape[0]
     
     #（B,32*17）に変更
@@ -262,16 +308,17 @@ def test(nbatch, noise_pred_net, noise_scheduler):
 
 
 def main():
-    #---------------------------------------------------------------------------------- --------------------------------------
+   #---------------------------------------------------------------------------------- --------------------------------------
     usedata = {"motor_angle" : True, "motor_force" : True, 'magsensor' : True}
-    result_dir_name = r"interval1_new"
+    result_dir= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\test"
     # result_dir_name = r"temp"
-    data_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\mixhit_3000_with_type.pickle"
+    data_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\test\testnan20250710_161712.pickle"
     resume_training = False  # 再開したい場合は True にする
     SUBSAMPLE = 1 
 
     #------------------------------------------------------------------------------------------------------------------------
-    result_dir = os.path.join(os.path.dirname(data_path),result_dir_name)
+    # result_dir = os.path.join(os.path.dirname(data_path),result_dir_name)
+
 
     num_epochs = 50
     BATCH_SIZE      = 64          # GPU メモリに合わせて調整
@@ -293,8 +340,7 @@ def main():
     stats_pass = os.path.join(result_dir, "stats")
     myfunction.wirte_pkl(train_data.stats, stats_pass)
 
-    
-    
+
     train_loader = DataLoader(dataset=train_data,batch_size=BATCH_SIZE, shuffle=True, 
                                 num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY, drop_last=DROP_LAST, persistent_workers=NUM_WORKERS > 0,)
     test_loader = DataLoader(dataset=test_data,batch_size=BATCH_SIZE, shuffle=False, 
@@ -349,14 +395,15 @@ def main():
 
                         global_step += 1
 
-                        if (global_step + 1) % 1000 == 0:
+                        if (global_step + 1) % 10 == 0:
                             noise_pred_net.eval()
                             with torch.no_grad():
                                 for nbatch in test_loader:
                                     test_loss = test(nbatch=nbatch, noise_scheduler=noise_scheduler, noise_pred_net=noise_pred_net)
                                     test_loss_mean += test_loss.item()
-                            train_loss_mean = train_loss_mean / 1000
-                            test_loss_mean = test_loss_mean / 1000
+                            train_loss_mean = train_loss_mean / 10
+                            test_loss_mean = test_loss_mean / 10
+                            tqdm.write(f"[] train={train_loss_mean:.5f} test={test_loss_mean:.5f}")
                             writer.add_scalars("loss", {'train':train_loss_mean, 'test':test_loss_mean}, global_step)
                             filename = '3d_model_epoch' + str(global_step)+"_.pth"
                             filename = os.path.join(result_dir, filename)

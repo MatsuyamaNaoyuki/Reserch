@@ -28,7 +28,7 @@ def print_loss_graph(trainpath, testpath, graphname):
     yticklabels = ax.get_yticklabels()
 
     ax.set_title(graphname,fontsize=20)
-    ax.set_ylim(0,0.1)
+    ax.set_ylim(0,0.02)
     ax.set_xlim(0,500)
     ax.set_xlabel("epoch_number",fontsize=20)
     ax.set_ylabel("loss",fontsize=20)
@@ -38,8 +38,8 @@ def print_loss_graph(trainpath, testpath, graphname):
 
 
 
-trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger0526\data32_stride1\3d_trainloss20250603_134521.pickle"
-testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger0526\data32_stride1\3d_testloss20250603_134521.pickle"
+trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data30stride1type\3d_trainloss20250523_065335.pickle"
+testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data30stride1type\3d_testloss20250523_065335.pickle"
 graphname = "alluse"
 
 print_loss_graph(trainpath, testpath, graphname)

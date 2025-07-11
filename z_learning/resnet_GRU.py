@@ -39,6 +39,7 @@ def train(model, data_loader):
 def make_sequence_tensor_stride(x, y, typedf,L, stride):
     typedf = typedf.tolist()
     typedf.insert(0, 0)
+    
     total_span = (L - 1) * stride
 
     seq_x, seq_y = [], []
@@ -56,6 +57,7 @@ def make_sequence_tensor_stride(x, y, typedf,L, stride):
 
         js = torch.arange(start, end, device=x.device)
         relative_indices = torch.arange(L-1, -1, -1, device=x.device) * stride
+        print(relative_indices)
         indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
 
         # --- ここで NaN 系列を除外する ---
@@ -146,8 +148,8 @@ magsensor = True
 L = 32 
 stride = 1
 
-result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\alluse_data32stride1"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_3000_with_type.pickle"
+result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\test"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\test\testnan20250710_161712.pickle"
 resume_training = False   # 再開したい場合は True にする
 
 
