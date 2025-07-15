@@ -333,6 +333,6 @@ def get_min_loss_epoch(file_path):
     return minid.iloc[-1]
 
 def get_type_change_end(df):
- 
+
     end_indices = df.index[df != df.shift(-1)]
     return end_indices

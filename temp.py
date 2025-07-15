@@ -1,113 +1,262 @@
-<<<<<<< HEAD
+import numpy as np
+import torch
+from torch.utils.data import Dataset
 import pandas as pd
-import matplotlib.pyplot as plt
-import numpy as np
-from scipy.spatial.transform import Rotation as R
+import torch.nn as nn
+from torch.utils.data import Dataset
+from torch.utils.data import DataLoader
+import os, time, math
+import torch.nn.functional as F
+from tqdm.auto import tqdm
+from typing import Union
 
-pd.options.display.float_format = '{:.2f}'.format
+from myclass import myfunction
+np.set_printoptions(threshold=np.inf)
 
-csv_file_path = r"C:\Users\shigf\Downloads\springmcdata.pickle"
-df = pd.read_pickle(csv_file_path)
-df = df[0]
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu") 
 
-# 点の作成
-points = [
-    (0, 0, 0),
-    (df[4] - df[1], df[5] - df[2], df[6] - df[3]),
-    (df[7] - df[1], df[8] - df[2], df[9] - df[3]),
-    (df[10] - df[1], df[11] - df[2], df[12] - df[3]),
-    (df[13] - df[1], df[14] - df[2], df[15] - df[3]),
-]
-=======
-import matplotlib.pyplot as plt
-import numpy as np
-import japanize_matplotlib
+def create_sample_indices(episode_ends: np.ndarray, sequence_length: int,
+                          condition_horizon: int, subsample_interval: int = 1):
+    indices = []
+    total_required_past = (condition_horizon - 1) * subsample_interval
+    total_required = total_required_past + 1 + sequence_length  # +1 for now
 
-plt.rcParams.update({'font.size': 22})
-# データの準備（4カテゴリ × 4グループ）
-categories = ['Marker1', 'Marker2', 'Marker3', 'Marker4']
-values = np.array([
-    [ 2.49 , 6.32, 11.63, 19.28],  # グループ1
-    [3.08,  7.81 ,14.66 ,23.48],  # グループ2
-    [2.5   ,7.25, 15.76, 27.55],   # グループ3
-    [2.84 , 7.28, 15.33 ,26.3]   # グループ4
-])
+    for i in range(len(episode_ends)):
+        start_idx = 0 if i == 0 else episode_ends[i - 1]
+        end_idx = episode_ends[i]
+        episode_length = end_idx - start_idx
+
+        for t in range(start_idx + total_required_past, end_idx - sequence_length):
+            # この時刻 t を現在としたときに、過去と未来の情報が取れるかをチェック
+            buffer_start = t - total_required_past
+            buffer_end = t + sequence_length + 1
+            if buffer_end > end_idx:
+                continue
+
+            indices.append([buffer_start, buffer_end,0, buffer_end - buffer_start])
+    return np.array(indices)
 
 
+def sample_sequence(train_data, sequence_length,
+                    buffer_start_idx, buffer_end_idx,
+                    condition_horizon=32, subsample_interval=1):
+    result = dict()
 
-name = ["連続時間変更なし", "連続時間変更有", "10飛ばし時間変更なし", "10飛ばし時間変更有"]
-# パラメータ設定
-num_groups = values.shape[0]  # データセットの数（4つ）
-num_categories = values.shape[1]  # カテゴリの数（4つ）
-bar_width = 0.2  # 棒の幅
+    for key, input_arr in train_data.items():
 
-# x軸の位置を設定
-x = np.arange(num_categories)
->>>>>>> 5731b3eacf11746e4fcebc14312103b95ff44ada
+        sample = input_arr[buffer_start_idx:buffer_end_idx]  # shape: (327, D)
 
-x, y, z = zip(*points)
+        if key == 'condition':
+            # 10フレームおきに、過去31点＋現在1点の32点を取得
+            data = sample[:(condition_horizon) * subsample_interval + 1 : subsample_interval]
 
-<<<<<<< HEAD
-# プロットの準備
-fig = plt.figure()
-plt.rcParams['xtick.labelsize'] = 14
-plt.rcParams['ytick.labelsize'] = 14
-ax = fig.add_subplot(111, projection='3d')
 
-# 点と線を描画
-for i in range(len(x)):
-    ax.scatter(x[i], y[i], z[i], color='r', s=30)
-ax.plot(x[1:], y[1:], z[1:], color='r')
-=======
-# グラフの描画
-plt.figure(figsize=(8, 5))
-for i in range(num_groups):
-    plt.bar(x + (i - num_groups/2) * bar_width + bar_width/2, values[i], width=bar_width, label=name[i], color=colors[i], edgecolor='black')
+        elif key == 'action':
+            data = sample[-sequence_length:]  # 未来16ステップ（t+1 ~ t+16）
+        else:
+            raise KeyError("Unknown key in data")
 
-# x軸のラベルを設定
-plt.ylim(0,30)
-plt.xticks(x, categories)
+        result[key] = data
+    return result
 
-# ラベルとタイトル
->>>>>>> 5731b3eacf11746e4fcebc14312103b95ff44ada
+# normalize data
+def get_data_stats(data):
+    data = data.reshape(-1,data.shape[-1])
+    stats = {
+        'min': np.min(data, axis=0),
+        'max': np.max(data, axis=0)
+    }
 
-# -----------------------
-# 軸スケールの統一処理
-# -----------------------
-# 全軸の最大範囲を使って等スケールに
-x_range = np.ptp(x)  # peak-to-peak: max - min
-y_range = np.ptp(y)
-z_range = np.ptp(z)
-max_range = max(x_range, y_range, z_range)
+    return stats
 
-# 中心を計算
-x_middle = (max(x) + min(x)) / 2
-y_middle = (max(y) + min(y)) / 2
-z_middle = (max(z) + min(z)) / 2
+def normalize_data(data, stats):
+    # nomalize to [0,1]
+    ndata = (data - stats['min']) / (stats['max'] - stats['min'])
+    # normalize to [-1, 1]
+    ndata = ndata * 2 - 1
+    return ndata
 
-# 軸範囲を統一してセット
-ax.set_xlim(x_middle - max_range / 2, x_middle + max_range / 2)
-ax.set_ylim(y_middle - max_range / 2, y_middle + max_range / 2)
-ax.set_zlim(z_middle - max_range / 2, z_middle + max_range / 2)
+def unnormalize_data(ndata, stats):
+    ndata = (ndata + 1) / 2
+    data = ndata * (stats['max'] - stats['min']) + stats['min']
+    return data
 
-<<<<<<< HEAD
-# 目盛もきれいに（例: 20単位）
-def nice_ticks(vmin, vmax, step=20):
-    start = int(np.floor(vmin / step) * step)
-    end = int(np.ceil(vmax / step) * step)
-    return np.arange(start, end + step, step)
+# dataset
+class FingerDataset(torch.utils.data.Dataset):
+    def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode, traindata = None):
+        train_split=0.7
+        df_dataset = pd.read_pickle(dataset_path).sort_values('time').reset_index(drop=True)
+        input_cols = []
+        if use_data["motor_angle"]:
+            input_cols += [f'rotate{i}' for i in range(1,5)]          # 4
+        if use_data["motor_force"]:
+            input_cols += [f'force{i}' for  i in range(1,5)]          # 4
+        if use_data["magsensor"]:
+            input_cols += [f'sensor{i}' for i in range(1,10)]         # 9  (sensor1‑9)
 
-ax.set_xticks(nice_ticks(*ax.get_xlim(), step=30))
-ax.set_yticks(nice_ticks(*ax.get_ylim(), step=30))
-ax.set_zticks(nice_ticks(*ax.get_zlim(), step=30))
+        target_cols = [f'Mc{j}{ax}' for j in range(2,6) for ax in ('x','y','z')]  # 12
 
-# 等スケール表示
-ax.set_box_aspect([1, 1, 1])  # X:Y:Z = 1:1:1
+        X_all = df_dataset[input_cols].to_numpy(dtype=np.float32)
+        Y_all = df_dataset[target_cols].to_numpy(dtype=np.float32)
 
-# 凡例を消す
-ax.legend().remove()
+        
 
-=======
-# グラフを表示
->>>>>>> 5731b3eacf11746e4fcebc14312103b95ff44ada
-plt.show()
+
+
+        labels = df_dataset['type'].to_numpy()  # 0,1,... で複数クラス対応
+
+        # 分けたものをここに溜める
+        X_split, Y_split =  [], []
+        
+
+
+        for cls in np.unique(labels):
+            cls_indices = np.where(labels == cls)[0]  # このクラスのインデックスを取得
+            X_cls = X_all[cls_indices]
+            Y_cls = Y_all[cls_indices]
+
+            N_cls = len(X_cls)
+            idx1 = int(N_cls * train_split)
+            idx2 = int(N_cls * (train_split + (1-train_split)/2))
+            if mode == "train":
+                X_split.append(X_cls[:idx1])
+                Y_split.append(Y_cls[:idx1])
+            elif mode == "val":
+                X_split.append(X_cls[idx1:idx2])
+                Y_split.append(Y_cls[idx1:idx2])
+            elif mode == "test":
+                X_split.append(X_cls[:])
+                Y_split.append(Y_cls[:])
+
+
+            # 最後に結合する
+        episode_ends = [len(row) for row in X_split]
+        episode_ends = np.array(episode_ends).cumsum()
+        
+
+        X_data = np.concatenate(X_split, axis=0)
+        Y_data = np.concatenate(Y_split, axis=0)
+        
+
+         
+        train_data = {'action': Y_data,'condition': X_data}
+        
+       
+
+        # compute start and end of each state-action sequence
+        # also handles padding
+        indices = create_sample_indices(episode_ends = episode_ends,sequence_length=future_estimate_horizon,
+                                                condition_horizon = condition_horizon)
+
+
+        
+        
+        # compute statistics and normalized data to [-1,1]
+        if mode == "train":
+            stats = dict()
+            for key, data in train_data.items():
+                stats[key] = get_data_stats(data)
+
+            
+        else:
+            stats = traindata.stats
+        normalized_data = dict()
+        for key, data in train_data.items():
+            normalized_data[key] = normalize_data(data, stats[key])
+
+
+        self.indices = indices
+        self.stats = stats
+        self.normalized_data = normalized_data
+        self.future_estimate_horizon = future_estimate_horizon
+        self.now_estimate_horizon = now_estimate_horizon
+        self.condition_horizon = condition_horizon
+ 
+
+    def __len__(self):
+        # all possible segments of the dataset
+        return len(self.indices)
+
+    def __getitem__(self, idx):
+        # get the start/end indices for this datapoint
+        buffer_start_idx, buffer_end_idx, \
+            sample_start_idx, sample_end_idx = self.indices[idx]
+
+        # get nomralized data using these indices
+        nsample = sample_sequence(train_data=self.normalized_data, sequence_length=self.condition_horizon,
+                                  buffer_start_idx=buffer_start_idx, buffer_end_idx=buffer_end_idx,
+                                  )
+
+
+        # discard unused conditionervations
+        nsample['condition'] = nsample['condition'][:self.condition_horizon,:]
+        nsample['action'] = nsample['action'][:self.future_estimate_horizon, :]  # ←これが必要！
+        
+        return nsample
+    
+
+        
+
+
+def main():
+    #---------------------------------------------------------------------------------- --------------------------------------
+    usedata = {"motor_angle" : True, "motor_force" : True, 'magsensor' : True}
+    result_dir= r"C:\Users\shigf\Program\data\testkesu"
+    data_path = r"C:\Users\shigf\Program\data\testyou.pickle"
+    resume_training = False  # 再開したい場合は True にする
+
+
+    #------------------------------------------------------------------------------------------------------------------------
+    # result_dir = os.path.join(os.path.dirname(data_path),result_dir_name)
+
+    num_epochs = 30
+    BATCH_SIZE      = 2         # GPU メモリに合わせて調整
+    NUM_WORKERS     = min(os.cpu_count(), 8)  # CPU コア数以内
+    PIN_MEMORY      = torch.cuda.is_available()
+    DROP_LAST       = True  
+    
+
+
+    future_estimate_horizon = 16
+    condition_horizon = 32
+    now_estimate_horizon = 1
+    condition_dim = 4 * usedata["motor_angle"] + 4 * usedata["motor_force"] + 9 * usedata["magsensor"]
+    estimation_dim = 12
+    train_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon,
+                               condition_horizon=condition_horizon, now_estimate_horizon=now_estimate_horizon,
+                               use_data=usedata, mode = "train")
+    test_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, 
+                              condition_horizon=condition_horizon, now_estimate_horizon=1,
+                              use_data=usedata, mode = "val", traindata=train_data)
+
+    #stasの保存
+    stats_pass = os.path.join(result_dir, "stats")
+    myfunction.wirte_pkl(train_data.stats, stats_pass)
+
+    
+    
+    train_loader = DataLoader(dataset=train_data,batch_size=BATCH_SIZE, shuffle=True, 
+                                num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY, drop_last=DROP_LAST, persistent_workers=NUM_WORKERS > 0,)
+    test_loader = DataLoader(dataset=test_data,batch_size=BATCH_SIZE, shuffle=False, 
+                                num_workers=NUM_WORKERS, pin_memory=PIN_MEMORY, drop_last=DROP_LAST, persistent_workers=NUM_WORKERS > 0,)
+    # create network object
+    
+    for i, batch in enumerate(train_loader):
+        print(f"Batch {i}:")
+        print(batch)
+        if i == 1:
+            break  # 2番目のバッチだけ見たい場合
+
+    
+
+
+
+
+
+
+if __name__ == '__main__':
+    main()
+
+
+
+
