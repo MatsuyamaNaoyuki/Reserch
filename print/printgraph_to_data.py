@@ -5,12 +5,12 @@ import matplotlib.pyplot as plt
 # サンプルデータフレーム
 
 
-df = pd.read_pickle(r"C:\Users\shigf\Program\data\0519_mech-newfinger\withhittest\0519_mech-newfinger_withhittest__20250523_180608.pickle")
+df = pd.read_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_3000_with_type.pickle")
 df = pd.DataFrame(df)
 df = df.reset_index()
 print(df.columns)   
-columns_to_plot = ["sensor7","sensor8", "sensor9"]  # 指定したい列のリスト
-df = df[:650]
+columns_to_plot = ["rotate1","rotate2", "rotate3", "rotate4"]  # 指定したい列のリスト
+df = df[2500:2600]
 # 各列を個別にプロット
 plt.figure()  # 新しい図を作成
 for column in columns_to_plot:

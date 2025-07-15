@@ -99,11 +99,11 @@ def save_test(test_dataset, result_dir):
     myfunction.wirte_pkl(test_indices, test_indices_path)
 
 #---------------------------------------------------------------------------------- --------------------------------------
-motor_angle = False
-motor_force = False
+motor_angle = True
+motor_force = True
 magsensor = True
-original_result_dir = r"tubefinger_mixhit\test"
-data_name = r"tube_softfinger_mixhit_3000_20250411_144433.pickle"
+original_result_dir = r"Robomech_mixhit\all_use_batch128"
+data_name = r"mixhit_600020250225_204522.pickle"
 resume_training = False  # 再開したい場合は True にする
 csv = False#今後Flaseに統一
 #------------------------------------------------------------------------------------------------------------------------
@@ -115,8 +115,8 @@ result_dir = os.path.join(base_path, original_result_dir)
 input_dim = 4 * motor_angle + 4 * motor_force + 9 * magsensor
 output_dim = 12
 learning_rate = 0.001
-num_epochs = 200
-batch_size =256
+num_epochs = 500
+batch_size =128
 r = 0.8
 
 # モデルの初期化

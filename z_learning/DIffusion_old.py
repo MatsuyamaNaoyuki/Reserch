@@ -50,7 +50,7 @@ def sample_sequence(train_data, sequence_length,
         if key == 'condition':
             # 10フレームおきに、過去31点＋現在1点の32点を取得
             data = sample[:(condition_horizon - 1) * subsample_interval + 1 : subsample_interval]
-            data = np.concatenate([data, sample[[-1]]], axis=0)  # 現在を追加（t）
+            
         elif key == 'action':
             data = sample[-sequence_length:]  # 未来16ステップ（t+1 ~ t+16）
         else:
@@ -83,8 +83,7 @@ def unnormalize_data(ndata, stats):
 
 # dataset
 class FingerDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode,subsample_interval, traindata = None):
-        self.subsample_interval = subsample_interval
+    def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode, traindata = None):
         train_split=0.7
         df_dataset = pd.read_pickle(dataset_path).sort_values('time').reset_index(drop=True)
         input_cols = []
@@ -145,7 +144,7 @@ class FingerDataset(torch.utils.data.Dataset):
         # compute start and end of each state-action sequence
         # also handles padding
         indices = create_sample_indices(episode_ends = episode_ends,sequence_length=future_estimate_horizon,
-                                                condition_horizon = condition_horizon, subsample_interval=self.subsample_interval)
+                                                condition_horizon = condition_horizon)
 
 
 
@@ -182,15 +181,15 @@ class FingerDataset(torch.utils.data.Dataset):
             sample_start_idx, sample_end_idx = self.indices[idx]
 
         # get nomralized data using these indices
-        nsample = sample_sequence(train_data=self.normalized_data, sequence_length=self.condition_horizon,
-                                  buffer_start_idx=buffer_start_idx, buffer_end_idx=buffer_end_idx,condition_horizon=self.condition_horizon,subsample_interval=self.subsample_interval
+        nsample = sample_sequence(train_data=self.normalized_data, sequence_length=self.future_estimate_horizon,
+                                  buffer_start_idx=buffer_start_idx, buffer_end_idx=buffer_end_idx,subsample_interval=1
                                   )
 
 
         # discard unused conditionervations
         nsample['condition'] = nsample['condition'][:self.condition_horizon,:]
         nsample['action'] = nsample['action'][:self.future_estimate_horizon, :]  # ←これが必要！
-        
+
         return nsample
     
 def save_checkpoint(path, epoch, model, ema, optimizer, lr_scheduler, stats, global_step):
@@ -263,11 +262,10 @@ def test(nbatch, noise_pred_net, noise_scheduler):
 def main():
     #---------------------------------------------------------------------------------- --------------------------------------
     usedata = {"motor_angle" : True, "motor_force" : True, 'magsensor' : True}
-    # result_dir_name = r"interval1"
-    result_dir_name = r"interval10"
+    result_dir_name = r"temp"
     data_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\mixhit_3000_with_type.pickle"
     resume_training = False  # 再開したい場合は True にする
-    SUBSAMPLE = 1 
+
 
     #------------------------------------------------------------------------------------------------------------------------
     result_dir = os.path.join(os.path.dirname(data_path),result_dir_name)
@@ -285,8 +283,8 @@ def main():
     now_estimate_horizon = 1
     condition_dim = 4 * usedata["motor_angle"] + 4 * usedata["motor_force"] + 9 * usedata["magsensor"]
     estimation_dim = 12
-    train_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "train", subsample_interval=SUBSAMPLE)
-    test_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "val", traindata=train_data, subsample_interval=SUBSAMPLE)
+    train_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "train")
+    test_data = FingerDataset(dataset_path= data_path, future_estimate_horizon=future_estimate_horizon, condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "val", traindata=train_data)
 
     #stasの保存
     stats_pass = os.path.join(result_dir, "stats")

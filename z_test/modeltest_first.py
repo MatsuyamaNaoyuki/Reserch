@@ -143,7 +143,7 @@ for i in range(front, back):
 dis_array = dis_array[front:back]
 
 print(type(dis_array))
-df = pd.DataFrame(dis_array, columns=["Mc2x", "Mc2y", "Mc2z", "Mc3x", "Mc3y", "Mc3z","Mc4x", "Mc4y", "Mc4z","Mc5x", "Mc5y", "Mc5z"])
-print(df)
-# CSV ファイルに書き出し
-df.to_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\panademo\output2.pickle")
+# df = pd.DataFrame(dis_array, columns=["Mc2x", "Mc2y", "Mc2z", "Mc3x", "Mc3y", "Mc3z","Mc4x", "Mc4y", "Mc4z","Mc5x", "Mc5y", "Mc5z"])
+# print(df)
+# # CSV ファイルに書き出し
+# df.to_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\panademo\output2.pickle")

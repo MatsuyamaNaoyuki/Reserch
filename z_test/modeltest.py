@@ -75,8 +75,8 @@ class ResNetRegression(nn.Module):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger_mixhit\alluse\3d_testloss20250414_143728.pickle"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\Reserch\tube_softfinger_test_10_20250415_172035.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\sentan_morecam\all_use\3d_testloss20250123_162722.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_mixhit\mixhit_fortest20250227_135315.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
@@ -137,14 +137,13 @@ model_from_script.eval()
 
 
 # x_data から 1 サンプルを取得（例: 0番目のサンプル）
-dis_array = np.zeros((1000, 4))
+dis_array = np.zeros((len(x_data), 4))
 # print(dis_array)
 start = time.time()
-for i in range(1000):
+for i in range(len(x_data)):
     # sample_idx = random.randint(int(len(x_data) * 0.8 ),len(x_data)-1)  # 推論したいサンプルのインデックス
     sample_idx = random.randint(0,len(x_data)-1)  # 推論したいサンプルのインデックス
     single_sample = x_change[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
-    print(single_sample)
     # 推論を行う（GPUが有効ならGPU上で実行）
     with torch.no_grad():  # 勾配計算を無効化
         prediction = model_from_script(single_sample)

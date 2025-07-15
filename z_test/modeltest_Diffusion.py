@@ -73,8 +73,7 @@ def sample_sequence(train_data, sequence_length,
 
         if key == 'condition':
             # 10フレームおきに、過去31点＋現在1点の32点を取得
-            data = sample[:(condition_horizon - 1) * subsample_interval + 1 : subsample_interval]
-            data = np.concatenate([data, sample[[-1]]], axis=0)  # 現在を追加（t）
+            data = sample[:(condition_horizon) * subsample_interval : subsample_interval]
         elif key == 'action':
             data = sample[-sequence_length:]  # 未来16ステップ（t+1 ~ t+16）
         else:
@@ -82,6 +81,7 @@ def sample_sequence(train_data, sequence_length,
 
         result[key] = data
     return result
+
 
 # normalize data
 def get_data_stats(data):
@@ -108,15 +108,16 @@ def unnormalize_data(ndata, stats):
 
 # dataset
 class FingerDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode, train_stats = None):
+    def __init__(self, dataset_path, future_estimate_horizon, condition_horizon, now_estimate_horizon, use_data, mode, subsample_interval,train_stats = None):
+        self.subsample_interval = subsample_interval
         train_split=0.7
         df_dataset = pd.read_pickle(dataset_path).sort_values('time').reset_index(drop=True)
         input_cols = []
         if use_data["motor_angle"]:
             input_cols += [f'rotate{i}' for i in range(1,5)]          # 4
-        if use_data["motor_angle"]:
+        if use_data["motor_force"]:
             input_cols += [f'force{i}' for  i in range(1,5)]          # 4
-        if use_data["motor_angle"]:
+        if use_data["magsensor"]:
             input_cols += [f'sensor{i}' for i in range(1,10)]         # 9  (sensor1‑9)
 
         target_cols = [f'Mc{j}{ax}' for j in range(2,6) for ax in ('x','y','z')]  # 12
@@ -169,7 +170,7 @@ class FingerDataset(torch.utils.data.Dataset):
         # compute start and end of each state-action sequence
         # also handles padding
         indices = create_sample_indices(episode_ends = episode_ends,sequence_length=future_estimate_horizon,
-                                                condition_horizon = condition_horizon)
+                                                condition_horizon = condition_horizon, subsample_interval=self.subsample_interval)
         
         # compute statistics and normalized data to [-1,1]
         if mode == "train":
@@ -203,12 +204,12 @@ class FingerDataset(torch.utils.data.Dataset):
             sample_start_idx, sample_end_idx = self.indices[idx]
 
         # get nomralized data using these indices
-        nsample = sample_sequence(train_data=self.normalized_data, sequence_length=self.condition_horizon,
-                                  buffer_start_idx=buffer_start_idx, buffer_end_idx=buffer_end_idx,
+        nsample = sample_sequence(train_data=self.normalized_data, sequence_length=self.future_estimate_horizon,
+                                  buffer_start_idx=buffer_start_idx, buffer_end_idx=buffer_end_idx,subsample_interval=self.subsample_interval
                                   )
         # discard unused conditionervations
-        nsample['condition'] = nsample['condition'][:self.condition_horizon,:]
-        nsample['action'] = nsample['action'][:self.future_estimate_horizon, :]  # ←これが必要！
+        # nsample['condition'] = nsample['condition'][:self.condition_horizon,:]
+        # nsample['action'] = nsample['action'][:self.future_estimate_horizon, :]  # ←これが必要！
         
         return nsample
     
@@ -232,7 +233,7 @@ def sample_denoised_action(model, condition, noise_scheduler, device, num_diffus
         x = x.squeeze(0)
 
         # 最初の1ステップだけ抽出
-        last_step = x[1]  # shape = (12,)
+        last_step = x[0]  # shape = (12,)
         return last_step.cpu()
 
 
@@ -242,11 +243,11 @@ def main():
 
     #変える部分-----------------------------------------------------------------------------------------------------------------
 
-    log_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\all_use3\logs\loss_test"
+    log_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\interval10\logs\loss_test"
     filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\mixhit_fortest.pickle"
     usedata = {"motor_angle" : True, "motor_force" : True, 'magsensor' : True}
-
-
+    subsample_interval = 10
+    #subsample_intervalをさがして変える
     #-----------------------------------------------------------------------------------------------------------------
     resultdir = os.path.dirname(os.path.dirname(log_dir))
 
@@ -269,7 +270,7 @@ def main():
     train_stats = pd.read_pickle(train_stats_dir)
 
     test_data = FingerDataset(dataset_path = filename, future_estimate_horizon=future_estimate_horizon,
-                            condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "test", train_stats=train_stats)
+                            condition_horizon=condition_horizon, now_estimate_horizon=1,use_data=usedata, mode = "test", train_stats=train_stats, subsample_interval= subsample_interval)
 
     minstep = str(get_min_step(log_dir))
     print(f"使用したephoch:{minstep}")
@@ -288,9 +289,8 @@ def main():
 
     noise_pred_net.eval()
 
-    roundtimes = 1000
-    if roundtimes > len(test_data):
-        roundtimes = len(test_data)
+    roundtimes = len(test_data)
+
     dis_array = np.zeros((roundtimes, 4))
     prediction_array = np.zeros((roundtimes, 12))
     real_val_array = np.zeros((roundtimes, 12))
