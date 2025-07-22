@@ -37,14 +37,6 @@ def update(frame):
     ax1.plot(x, sensordf["sensor2"], color='red')
     ax1.plot(x, sensordf["sensor3"], color='green')
 
-    ax2.plot(x, sensordf["sensor4"], color='blue')
-    ax2.plot(x, sensordf["sensor5"], color='red')
-    ax2.plot(x, sensordf["sensor6"], color='green')
-
-    ax3.plot(x, sensordf["sensor7"], color='blue')
-    ax3.plot(x, sensordf["sensor8"], color='red')
-    ax3.plot(x, sensordf["sensor9"], color='green')
-
     
     
 Ms = MagneticSensor()

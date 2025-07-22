@@ -1,7 +1,7 @@
 import threading, csv, os
 import time, datetime, getopt, sys
 from myclass import myfunction
-from myclass.MyDynamixel2 import MyDynamixel
+from myclass.MyDynamixel4 import MyDynamixel
 from myclass.MyMagneticSensor import MagneticSensor
 import queue
 import pickle

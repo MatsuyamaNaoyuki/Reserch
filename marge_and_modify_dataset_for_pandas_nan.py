@@ -104,13 +104,17 @@ def data_marge_v2(motiondata, motordata, magsensor):
 
 magfile = myfunction.find_pickle_files("magsensor")
 magsensor = myfunction.load_pickle(magfile)
+maglen = len(magsensor[0]) - 1
 
 motorfile = myfunction.find_pickle_files("motor")
 motordata = myfunction.load_pickle(motorfile)
+motorlen = int((len(motordata[0]) - 1) / 2) 
+
+
 
 motionfile = myfunction.find_pickle_files("motioncapture")
 motiondata = myfunction.load_pickle(motionfile)
-
+motionlen = int((len(motiondata[0]) - 1) /3)
 
   
 magdata = []
@@ -120,11 +124,15 @@ for magrow in magsensor:
 
 margedata = data_marge_v2(motiondata, motordata, magdata)
 
+lenname = ["time"] +\
+          [f"rotate{i}" for i in range(1, motorlen+1)] + \
+          [f"force{i}"  for i in range(1, motorlen+1)] + \
+          [f"sensor{i}"  for i in range(1, maglen+1)] + \
+          [f"Mc{i}{p}" for i in range(1, motionlen+1) for p in ("x", "y", "z")]
 
+margedata.insert(0, lenname)
 
-margedata.insert(0, ["time","rotate1","rotate2","rotate3","rotate4","force1","force2","force3","force4","sensor1","sensor2","sensor3","sensor4","sensor5","sensor6","sensor7","sensor8","sensor9","Mc1x","Mc1y","Mc1z","Mc2x","Mc2y","Mc2z","Mc3x","Mc3y","Mc3z","Mc4x","Mc4y","Mc4z","Mc5x","Mc5y","Mc5z"])
-
-
+###==================================================atode
 
 df = pd.DataFrame(margedata[1:], columns=margedata[0])
 
