@@ -23,7 +23,7 @@ def print_loss_graph(trainpath, testpath, graphname):
 
 
     fig, ax = plt.subplots(figsize = (8.0, 6.0)) 
-    df_contact.plot(ax=ax, ylim=(0, 0.01), xlim = (0,500))  # ylimを直接指定
+    df_contact.plot(ax=ax, ylim=(0, 0.01), xlim = (0,300))  # ylimを直接指定
     xticklabels = ax.get_xticklabels()
     yticklabels = ax.get_yticklabels()
 
@@ -37,9 +37,9 @@ def print_loss_graph(trainpath, testpath, graphname):
     plt.show()
 
 
-
-trainpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data30stride1type\3d_trainloss20250523_065335.pickle"
-testpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\data30stride1type\3d_testloss20250523_065335.pickle"
+filepath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\nomotor4"
+trainpath = myfunction.find_pickle_files("trainloss", filepath)
+testpath = myfunction.find_pickle_files("testloss", filepath)
 graphname = "alluse"
 
 print_loss_graph(trainpath, testpath, graphname)

@@ -3,9 +3,7 @@ import csv
 import time
 import numpy as np
 from datetime import datetime
-print("serial.Serial がある？", hasattr(serial, "Serial"))
-print("serial.SerialException がある？", hasattr(serial, "SerialException"))
-print("場所:", serial.__file__)
+
 
 class MagneticSensor:
     # def __init__(self):

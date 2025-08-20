@@ -12,6 +12,7 @@ import random
 import numpy as np
 import pandas as pd
 import os, sys
+import japanize_matplotlib
 from pathlib import Path
 
 
@@ -48,19 +49,18 @@ def detect_file_type(filename):
     else:
         return 'unknown'  # サポート外の拡張子
 
-
-
-def make_sequence_tensor_stride(x, y, typedf,L, stride):
+def make_sequence_tensor_stride(x, y, typedf, L, stride):
     typedf = typedf.tolist()
     typedf.insert(0, 0)
     total_span = (L - 1) * stride
 
     seq_x, seq_y = [], []
-    
+
     nan_mask = torch.isnan(x).any(dim=1)
     nan_rows = nan_mask.nonzero(as_tuple=True)[0].tolist()
 
     nan_rows_set = set(nan_rows)  # 高速化のため set にしておく
+    first_group_len = None  # ← 追加：最初のグループの shape[0] を格納
 
     for i in range(len(typedf) - 1):
         start = typedf[i] + total_span
@@ -72,7 +72,7 @@ def make_sequence_tensor_stride(x, y, typedf,L, stride):
         relative_indices = torch.arange(L-1, -1, -1, device=x.device) * stride
         indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
 
-        # --- ここで NaN 系列を除外する ---
+       # --- ここで NaN 系列を除外する ---
         # indices を CPU に移動して numpy に変換
         indices_np = indices.cpu().numpy()
         # nan_rows が含まれているか判定
@@ -91,40 +91,134 @@ def make_sequence_tensor_stride(x, y, typedf,L, stride):
 
         if indices.shape[0] == 0:
             continue  # 有効な系列がなければスキップ
-    
-        x_seq = x[indices]  # shape: (num_seq_valid, L, D)
-        y_seq = y[js]       # shape: (num_seq_valid, D_out)
+        # 最初のグループだけ取得
+        if first_group_len is None:
+            first_group_len = indices.shape[0]
+
+        x_seq = x[indices]
+        y_seq = y[js]
 
         seq_x.append(x_seq)
         seq_y.append(y_seq)
-            
-  
-        
-    
 
     seq_x = torch.cat(seq_x, dim=0)
     seq_y = torch.cat(seq_y, dim=0)
 
-
-    return torch.utils.data.TensorDataset(seq_x, seq_y)
-
+    return seq_x, seq_y, first_group_len  # ← 追加：最初のグループ長も返す
 
 
+def make_touch_hist():
+    point4_array1 = dis_array1[:, 3]
+    point4_array2 = dis_array2[:, 3]
+
+    # ヒストグラム描画
+    plt.figure(figsize=(8, 5))
+    plt.hist(point4_array1, bins='auto', alpha=0.6, label='dis_array1 (first part)', edgecolor='black')
+    plt.hist(point4_array2, bins='auto', alpha=0.6, label='dis_array2 (second part)', edgecolor='black')
+
+    # ラベルとタイトル
+    plt.xlabel('Distance Error (Point 4)')
+    plt.ylabel('Frequency')
+    plt.title('Histogram of Point 4 Errors: dis_array1 vs dis_array2')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+def to_numpy_safe(t):
+    if isinstance(t, torch.Tensor):
+        return t.detach().cpu().numpy()
+    else:
+        return np.asarray(t)
+
+
+def make_scatter_plot_of_motor_and_error():
+    motorsum = []
+    for i in range(len(seq_x)):
+        last_step = seq_x[i][-1]            # shape: (17,)
+        last_step = last_step * x_std + x_mean
+        motorsum.append(last_step[0:4].sum().item())
+
+    motorsum = np.array(motorsum)           # (N,)
+
+    # dis_array1, dis_array2 はすでに NumPy 配列 (N1,4), (N2,4)
+    motorsum1 = motorsum[:first_group_len]          # (N1,)
+    motorsum2 = motorsum[first_group_len:]          # (N2,)
+
+    # -----------------------------------------------------------
+    # 2. 散布図を 2 色で描画
+    # -----------------------------------------------------------
+    plt.figure(figsize=(8, 5))
+
+    # グループ1（dis_array1）の Point-4 誤差
+    plt.scatter(motorsum1, dis_array1[:, 3],
+                alpha=0.7, label='接触あり')
+
+    # グループ2（dis_array2）の Point-4 誤差
+    plt.scatter(motorsum2, dis_array2[:, 3],
+                alpha=0.7, label='接触なし')
+
+    plt.xlabel('Motor Sum')
+    plt.ylabel('Distance Error (Point 4)')
+    plt.title('Scatter: Motor Sum vs Point-4 Error (2 Groups)')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
+
+
+def make_row_data_with_gosa(dis_array):
+    row_data = []
+    for i in range(len(seq_x)):
+        last_step = seq_x[i][-1]            # shape: (17,)
+        last_step = last_step * x_std + x_mean
+        row_data.append(last_step.tolist()[0])
+    
+    
+    rowdata = np.array(row_data)
+    dis_array = np.array(dis_array[:, 3])
+    mean_val = dis_array.mean()
+
+    # ==== プロット準備 ====
+    plt.figure(figsize=(8, 5))
+    x = list(range(len(rowdata)))  # 行番号
+
+    # ==== 背景色（縦帯）を行ごとに塗る ====
+    for i in range(len(rowdata)):
+        color = 'blue' if dis_array[i] < mean_val else 'red'
+        plt.axvspan(i - 0.5, i + 0.5, facecolor=color, alpha=0.3)
+
+    # ==== 各列ごとの折れ線（列を固定して描く）====
+    for col in [0,1,2,3]:  # 0～3列目
+        y = rowdata[:, col]
+        plt.plot(x, y, marker='o', markersize=4, linewidth=1.0, label=f'Column {col}')
+
+    # ==== 装飾 ====
+    plt.xlabel('Row Index')
+    plt.ylabel('磁気センサー')
+    plt.title('磁気センサーと誤差の関係')
+    plt.legend()
+    plt.grid(True)
+    plt.tight_layout()
+    plt.show()
 
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\alluse_stride20\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger0806\mixhit10kaifortest.pickle"
+testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\alluse_data32stride1\3d_testloss20250624_192457.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortesttype.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
 L = 32
-stride = 20
-testin = None
+stride = 1
+
+touch_vis = False
+scatter_motor = False
+row_data_swith = False
 #-----------------------------------------------------------------------------------------------------------------
 
-input_dim = 3 * motor_angle + 3 * motor_force + 9 * magsensor
+input_dim = 4 * motor_angle + 4 * motor_force + 9 * magsensor
 output_dim = 12
 
 
@@ -142,10 +236,6 @@ x_data = x_data.to(device)
 y_data = y_data.to(device)
 
 
-if testin is not None:
-    test_indices = myfunction.load_pickle(testin)
-    x_data = x_data[test_indices]  
-    y_data = y_data[test_indices]
 
 
 resultdir = os.path.dirname(testloss)
@@ -159,7 +249,10 @@ x_change = (x_data - x_mean) / x_std
 y_change = (y_data - y_mean) / y_std
 
 type_end_list = myfunction.get_type_change_end(typedf)
-seq_x, seq_y = make_sequence_tensor_stride(x_change, y_data,type_end_list, L=L, stride=stride)
+
+
+seq_x, seq_y, first_group_len= make_sequence_tensor_stride(x_change, y_data,type_end_list, L=L, stride=stride)
+
 
 
 # モデルのロード
@@ -172,26 +265,45 @@ model_from_script.eval()
 
 
 # x_data から 1 サンプルを取得（例: 0番目のサンプル）
-dis_array = np.zeros((1000, 4))
+dis_array1 = []
+dis_array2 = []
+
+print(f"seq_x の長さ: {len(seq_x)}")
+print(f"first_group_len: {first_group_len}")
 # print(dis_array)
 
-for i in range(1000):
-    # sample_idx = random.randint(int(len(x_data) * 0.8 ),len(x_data)-1)  # 推論したいサンプルのインデックス
-    sample_idx = random.randint(0,len(seq_x)-1)  # 推論したいサンプルのインデックス
+
+start = time.time()
+for i in range(len(seq_x)):
+    sample_idx = i  # 推論したいサンプルのインデックス
     single_sample = seq_x[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
-    # 推論を行う（GPUが有効ならGPU上で実行）
     with torch.no_grad():  # 勾配計算を無効化
         prediction = model_from_script(single_sample)
-    # print(y_change[sample_idx])
-    single_sample = single_sample * x_std + x_mean
     prediction = prediction * y_std + y_mean
+    
     distance = culc_gosa(prediction.tolist()[0], seq_y[sample_idx].tolist())
-    dis_array[i, :] = distance
+    if i < first_group_len:
+        dis_array1.append(distance)
+    else:
+        dis_array2.append(distance)
 end = time.time()
 
+dis_array1 = np.array(dis_array1)
+dis_array2 = np.array(dis_array2)
 
 
-print(dis_array)
+dis_array = np.concatenate([dis_array1, dis_array2], axis=0)
 column_means = np.mean(dis_array, axis=0)
 print("列ごとの平均:", column_means.round(2))
 
+
+
+print(end-start)
+# if touch_vis:
+#     make_touch_hist()
+
+# if scaler_data:
+#     make_scatter_plot_of_motor_and_error()
+
+# if row_data_swith:
+#     make_row_data_with_gosa(dis_array)

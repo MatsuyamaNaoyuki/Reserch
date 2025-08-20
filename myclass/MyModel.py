@@ -306,6 +306,85 @@ class ResNetGRU(nn.Module):
         self.gru      = nn.GRU(512, hidden, batch_first=True)
         self.head     = nn.Linear(hidden, output_dim)
 
+
+    def forward(self, x_seq):                 # (B,L,C)
+        B, L, C = x_seq.shape
+
+        # --- ★ 1. (B*L, C, 1) へ変形し「各時刻を独立に」ResNet に通す ---
+        x_flat = x_seq.reshape(B*L, C).unsqueeze(-1)     # 長さ=1 の信号
+        feat   = self.backbone(x_flat)                   # (B*L, 512)
+
+        # --- ★ 2. 元の系列形に戻す
+        feat   = feat.view(B, L, -1)                     # (B,L,512)
+
+        # --- 3. GRU で時系列統合
+        h, _   = self.gru(feat)                          # (B,L,hidden)
+
+        
+
+        return self.head(h[:, -1])    
+
+class BasicBlock1Dforshap(nn.Module):
+    expansion = 1
+    def __init__(self, in_planes, planes, stride=1, downsample=None):
+        super().__init__()
+        self.conv1 = nn.Conv1d(in_planes, planes, kernel_size=3,
+                               stride=stride, padding=1, bias=False)
+        self.bn1   = nn.BatchNorm1d(planes)
+        self.relu  = nn.ReLU(inplace=False)
+        self.conv2 = nn.Conv1d(planes, planes, kernel_size=3,
+                               stride=1, padding=1, bias=False)
+        self.bn2   = nn.BatchNorm1d(planes)
+        self.downsample = downsample
+    def forward(self, x):
+        identity = x
+        out = self.relu(self.bn1(self.conv1(x)))
+        out = self.bn2(self.conv2(out))
+        if self.downsample is not None:
+            identity = self.downsample(x)
+        out = out + identity
+        return self.relu(out)
+
+class ResNet1Dforshap(nn.Module):
+    def __init__(self, in_channels, base_width=64):
+        super().__init__()
+        self.inplanes = base_width
+        self.conv1 = nn.Conv1d(in_channels, base_width, kernel_size=7,
+                               stride=2, padding=3, bias=False)
+        self.bn1  = nn.BatchNorm1d(base_width)
+        self.relu = nn.ReLU(inplace=False)
+        self.maxpool = nn.MaxPool1d(kernel_size=3, stride=2, padding=1)
+
+        self.layer1 = self._make_layer(base_width,   2, stride=1)
+        self.layer2 = self._make_layer(base_width*2, 2, stride=2)
+        self.layer3 = self._make_layer(base_width*4, 2, stride=2)
+        self.layer4 = self._make_layer(base_width*8, 2, stride=2)
+
+        self.avgpool = nn.AdaptiveAvgPool1d(1)   # 出力 (B,512,1)
+    def _make_layer(self, planes, blocks, stride):
+        downsample = None
+        if stride != 1 or self.inplanes != planes:
+            downsample = nn.Sequential(
+                nn.Conv1d(self.inplanes, planes, kernel_size=1,
+                          stride=stride, bias=False),
+                nn.BatchNorm1d(planes))
+        layers = [BasicBlock1Dforshap(self.inplanes, planes, stride, downsample)]
+        self.inplanes = planes
+        for _ in range(1, blocks):
+            layers.append(BasicBlock1Dforshap(self.inplanes, planes))
+        return nn.Sequential(*layers)
+    def forward(self, x):                 # x: (B,C,L)
+        x = self.maxpool(self.relu(self.bn1(self.conv1(x))))
+        x = self.layer4(self.layer3(self.layer2(self.layer1(x))))
+        return self.avgpool(x).squeeze(-1)   # (B,512)
+
+class ResNetGRUforshap(nn.Module):
+    def __init__(self, input_dim, output_dim=12, hidden=128):
+        super().__init__()
+        self.backbone = ResNet1Dforshap(in_channels=input_dim)  # 1‑D ResNet (出力512)
+        self.gru      = nn.GRU(512, hidden, batch_first=True)
+        self.head     = nn.Linear(hidden, output_dim)
+
     def forward(self, x_seq):                 # (B,L,C)
         B, L, C = x_seq.shape
 
@@ -320,3 +399,60 @@ class ResNetGRU(nn.Module):
         h, _   = self.gru(feat)                          # (B,L,hidden)
 
         return self.head(h[:, -1])    
+    
+
+class PositionalEncoding(nn.Module):
+    def __init__(self, d_model, dropout=0.1, max_len=500):
+        super().__init__()
+        self.dropout = nn.Dropout(p=dropout)
+
+        pe = torch.zeros(max_len, d_model)
+        position = torch.arange(0, max_len).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)  # (1, max_len, d_model)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        # x: (B, L, D)
+        x = x + self.pe[:, :x.size(1)]
+        return self.dropout(x)
+
+
+class ResNetTransformer(nn.Module):
+    def __init__(self, input_dim, output_dim=12, d_model=512, nhead=8, nhid=2048, nlayers=2, dropout=0.1):
+        super().__init__()
+        self.backbone = ResNet1D(in_channels=input_dim)  # 出力は (B*L, 512)
+        self.pos_encoder = PositionalEncoding(d_model, dropout)
+
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model,
+            nhead=nhead,
+            dim_feedforward=nhid,
+            dropout=dropout
+        )
+        self.transformer_encoder = nn.TransformerEncoder(encoder_layer, nlayers)
+
+        self.head = nn.Linear(d_model, output_dim)
+
+    def forward(self, x_seq):
+        B, L, C = x_seq.shape  # (B, L, C)
+        # ResNet に通す
+        x_flat = x_seq.reshape(B*L, C).unsqueeze(-1)  # (B*L, C, 1)
+        feat = self.backbone(x_flat)                 # (B*L, 512)
+        feat = feat.view(B, L, -1)                  # (B, L, 512)
+        # Positional Encoding
+        feat = self.pos_encoder(feat)              # (B, L, 512)
+        # TransformerEncoder expects (L, B, D)
+        feat = feat.permute(1, 0, 2)               # (L, B, 512)
+        # Transformer Encoder
+        feat = self.transformer_encoder(feat)     # (L, B, 512)
+        # 戻して (B, L, 512)
+        feat = feat.permute(1, 0, 2)
+        # 最終時刻の出力だけ取り出す or 平均を取る
+        out = feat[:, -1, :]  # (B, 512) ←最終時刻
+        # out = feat.mean(dim=1)  # (B, 512) ←平均
+        out = self.head(out)  # (B, 12)
+
+        return out

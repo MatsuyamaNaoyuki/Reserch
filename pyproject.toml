@@ -24,6 +24,9 @@ datasets = "^3.5.0"
 wandb = "^0.19.9"
 tensorboard = "^2.19.0"
 pyserial = "^3.5"
+discord-py = "^2.5.2"
+python-dotenv = "^1.1.1"
+git-filter-repo = "^2.47.0"
 
 [[tool.poetry.source]]
 name = "torch_cu121"

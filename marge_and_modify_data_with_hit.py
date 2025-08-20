@@ -199,10 +199,17 @@ df = modify_motion(df)
 print(df.columns)
 
 
+min_values = df.min()
+max_values = df.max()
+
+# 表としてまとめて表示
+summary = pd.DataFrame({
+    "min": min_values,
+    "max": max_values
+})
+print(summary)
 
 
-# # df = df.head(8670)
-df = df[df.index  % 10 == 0]
 
 filename = "0526_tubefinger_nohit_1500kai"
 

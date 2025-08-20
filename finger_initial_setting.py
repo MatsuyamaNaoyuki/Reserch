@@ -8,7 +8,7 @@ from package import dx2lib as dx2
 from package import setting
 import csv
 import pprint
-from myclass.MyDynamixel2 import MyDynamixel
+from myclass.MyDynamixel4 import MyDynamixel
 # from myclass.MotionCapture2 import MotionCapture
 from myclass import myfunction
 

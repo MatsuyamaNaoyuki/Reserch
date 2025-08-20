@@ -11,6 +11,8 @@ from scipy.spatial import distance_matrix
 import random
 import torch
 import pickle
+import discord
+
 
 
 # def make_3D_graph(path, firstrow = 1, lastrow = 5):
@@ -236,20 +238,23 @@ def read_csv_to_torch(filename, motor_angle, motor_force, magsensor):
     return(tensor_data_x,tensor_data_y)
 
 
+
 def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
     pickle_file_path = filename
     df = pd.read_pickle(pickle_file_path)
-
-
+    columns = df.columns.tolist()
+    motor_angle_columns = [col for col in columns if "rotate" in col]
+    motor_force_columns = [col for col in columns if "force" in col]
+    motor_magsensor_columns = [col for col in columns if "sensor" in col]
     #説明変数と目的変数に分離
 
     input_col = []
     if motor_angle:
-        input_col.extend(['rotate1','rotate2','rotate3','rotate4'])
+        input_col.extend(motor_angle_columns)
     if motor_force:
-        input_col.extend(['force1','force2','force3','force4'])
+        input_col.extend(motor_force_columns)
     if magsensor:
-        input_col.extend(['sensor1','sensor2','sensor3','sensor4','sensor5','sensor6','sensor7','sensor8','sensor9'])
+        input_col.extend(motor_magsensor_columns)
 
     x_value = df.loc[:, input_col]
     y_value = df.loc[:, ['Mc2x','Mc2y','Mc2z','Mc3x','Mc3y','Mc3z','Mc4x','Mc4y','Mc4z','Mc5x','Mc5y','Mc5z', ]]
@@ -264,13 +269,16 @@ def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
     if "type" in df.columns:
         return tensor_data_x,tensor_data_y, df["type"]
     else:
-        return tensor_data_x,tensor_data_y
+        return tensor_data_x,tensor_data_y, None
+    
 
 
-
-def save_model(model, filename):
-    now = datetime.datetime.now()
-    filename =  filename + now.strftime('%Y%m%d_%H%M%S') + '.pth'
+def save_model(model, filename, time=True):
+    if time:
+        now = datetime.datetime.now()
+        filename =  filename + now.strftime('%Y%m%d_%H%M%S') + '.pth'
+    else:
+        filename = filename + '.pth'
     model_scripted = torch.jit.script(model)
     model_scripted.save(filename)
 
@@ -285,10 +293,13 @@ def wirte_csv(data, filename):
         writer = csv.writer(f)
         writer.writerows(data)
 
-def wirte_pkl(data, filename):
-    now = datetime.datetime.now()
+def wirte_pkl(data, filename, time = True):
+    if time:
+        now = datetime.datetime.now()
+        filename =  filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
+    else:
+        filename = filename + '.pickle'
 
-    filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
 
     with open(filename, 'wb') as fo:
         pickle.dump(data, fo)
@@ -353,3 +364,37 @@ def get_type_change_end(type_vec):
         idx = idx.append(pd.Index([len(tv)]))
 
     return idx
+
+
+def send_message():
+    TOKEN = os.getenv("DISCORD_TOKEN")  # .envや環境変数から取得
+  
+    CHANNEL_ID = 1394557595146125406 # 通知したいチャンネルのID
+
+    intents = discord.Intents.default()
+    client = discord.Client(intents=intents)
+
+    @client.event
+    async def on_ready():
+        print(f"✅ ログインしました：{client.user}")
+        user = await client.fetch_user(258533597848272896)
+        await user.send("🎉 プログラムが終了しました！")
+        await client.close()
+
+    client.run(TOKEN)
+def send_message_for_test(column_means):
+    TOKEN = os.getenv("DISCORD_TOKEN")  # .envや環境変数から取得
+
+    CHANNEL_ID = 1394557595146125406 # 通知したいチャンネルのID
+
+    intents = discord.Intents.default()
+    client = discord.Client(intents=intents)
+
+    @client.event
+    async def on_ready():
+        print(f"✅ ログインしました：{client.user}")
+        user = await client.fetch_user(258533597848272896)
+        await user.send("列ごとの平均:", column_means)
+        await client.close()
+
+    client.run(TOKEN)

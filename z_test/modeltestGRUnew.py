@@ -55,6 +55,11 @@ def make_sequence_tensor_stride(x, y, typedf, L, stride):
     total_span = (L - 1) * stride
 
     seq_x, seq_y = [], []
+
+    nan_mask = torch.isnan(x).any(dim=1)
+    nan_rows = nan_mask.nonzero(as_tuple=True)[0].tolist()
+
+    nan_rows_set = set(nan_rows)  # 高速化のため set にしておく
     first_group_len = None  # ← 追加：最初のグループの shape[0] を格納
 
     for i in range(len(typedf) - 1):
@@ -67,9 +72,25 @@ def make_sequence_tensor_stride(x, y, typedf, L, stride):
         relative_indices = torch.arange(L-1, -1, -1, device=x.device) * stride
         indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
 
-        # print(f"[Group {i}] indices shape: {indices.shape}")
-        # print(indices)
+       # --- ここで NaN 系列を除外する ---
+        # indices を CPU に移動して numpy に変換
+        indices_np = indices.cpu().numpy()
+        # nan_rows が含まれているか判定
+        valid_mask = []
+        for row in indices_np:
+            if any(idx in nan_rows_set for idx in row):
+                valid_mask.append(False)  # nan を含む → 無効
+            else:
+                valid_mask.append(True)   # nan を含まない → 有効
 
+        valid_mask = torch.tensor(valid_mask, device=x.device)
+
+        # 有効な indices だけ残す
+        indices = indices[valid_mask]
+        js = js[valid_mask]
+
+        if indices.shape[0] == 0:
+            continue  # 有効な系列がなければスキップ
         # 最初のグループだけ取得
         if first_group_len is None:
             first_group_len = indices.shape[0]
@@ -184,20 +205,20 @@ def make_row_data_with_gosa(dis_array):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-testloss = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\alluse_data32stride10\3d_testloss20250624_094326.pickle"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortesttype.pickle"
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\alluse_stride20\model.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger0806\mixhit10kaifortest.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
 L = 32
-stride = 1
+stride = 20
 
-touch_vis = False
-scatter_motor = False
-row_data_swith = False
+touch_vis = True
+scatter_motor = True
+row_data_swith = True
 #-----------------------------------------------------------------------------------------------------------------
 
-input_dim = 4 * motor_angle + 4 * motor_force + 9 * magsensor
+input_dim = 3 * motor_angle + 3 * motor_force + 9 * magsensor
 output_dim = 12
 
 
@@ -217,7 +238,7 @@ y_data = y_data.to(device)
 
 
 
-resultdir = os.path.dirname(testloss)
+resultdir = os.path.dirname(modelpath)
 scaler_path = myfunction.find_pickle_files("scaler", resultdir)
 scaler_data = myfunction.load_pickle(scaler_path)
 x_mean = torch.tensor(scaler_data['x_mean']).to(device)
@@ -235,9 +256,7 @@ seq_x, seq_y, first_group_len= make_sequence_tensor_stride(x_change, y_data,type
 
 
 # モデルのロード
-minid = str(get_min_loss_epoch(testloss))
-print(f"使用したephoch:{minid}")
-modelpath = myfunction.find_pickle_files("epoch" + minid + "_", directory=resultdir, extension='.pth')
+
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 model_from_script.eval()
 
@@ -273,16 +292,19 @@ dis_array2 = np.array(dis_array2)
 
 dis_array = np.concatenate([dis_array1, dis_array2], axis=0)
 column_means = np.mean(dis_array, axis=0)
+column_means1 = np.mean(dis_array1, axis=0)
+column_means2 = np.mean(dis_array2, axis=0)
 print("列ごとの平均:", column_means.round(2))
-
-
+print("1列ごとの平均:", column_means1.round(2))
+print("2列ごとの平均:", column_means2.round(2))
+# myfunction.send_message_for_test(column_means.round(2))
 
 print(end-start)
-# if touch_vis:
-#     make_touch_hist()
+if touch_vis:
+    make_touch_hist()
 
-# if scaler_data:
-#     make_scatter_plot_of_motor_and_error()
+if scaler_data:
+    make_scatter_plot_of_motor_and_error()
 
-# if row_data_swith:
-#     make_row_data_with_gosa(dis_array)
+if row_data_swith:
+    make_row_data_with_gosa(dis_array)

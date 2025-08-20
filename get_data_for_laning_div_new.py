@@ -1,7 +1,7 @@
 import threading, csv, os
 import time, datetime, getopt, sys
 from myclass import myfunction
-from myclass.MyDynamixel2 import MyDynamixel
+from myclass.MyDynamixel4 import MyDynamixel
 from myclass.MyMagneticSensor import MagneticSensor
 import queue
 import pickle
@@ -113,11 +113,11 @@ def move(Motors, howtomovepath):
             Motors.move_to_points(angles, times = 7)
         else:
             Motors.move_to_points(angles, times = time_len[i%len(time_len)])
-        if i% 1000 == 0:
+        if i% 500 == 0:
             write_pkl_event_motor.set()
             write_pkl_event_mag.set()
             write_pkl_event_Mc.set()
-            time.sleep(5)
+            time.sleep(0.1)
 
     # time.sleep(2)
     stop_event.set()
@@ -185,7 +185,7 @@ def get_motioncapture(Ms, mcpath):
 
 # result_dir = r"0520\nohit1500kai"
 
-base_path = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0520_nohit_1500"
+base_path = r"C:\Users\shigf\Program\data\0818_tubefinger_rere\kijunn"
 
 # ----------------------------------------------------------------------------------------
 

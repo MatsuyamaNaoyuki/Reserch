@@ -238,7 +238,20 @@ def randam_rittai_ver0120():
         
             
         
+def randam_rittai_ver0720():
+    data =[]
     
+    l_or_r = random.choice(["left", "right"])
+    if l_or_r == "left":
+        left, centor = generate_l_and_c()
+        data.extend([[left, 0, centor]])
+        data.extend([[0, 0, 0]])
+    else:
+        right, centor = generate_l_and_c()
+        data.extend([[0, right, centor]])
+        data.extend([[0, 0, 0]])
+    return data
+        
 
 
 def randam_rittai_fast():
@@ -273,12 +286,12 @@ def test():
 # motor_angle = randam_heimen()
 # print(motor_angle)
 motor_angle = []
-for i in range(4500):
-    motor_angle.extend(randam_rittai_ver0120())
+for i in range(10):
+    motor_angle.extend(randam_rittai_ver0720())
 # motor_angle.extend(test())
 print(motor_angle)
 
-motor_angle = test()
-motor_angle = [[0,0,0,0],[0,0,0,0],[0,0,0,0]]
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\temp\howtomove"
+# motor_angle = test()
+motor_angle = [[0,0,250],[0,0,0],[250,0,0],[0,0,0],[0,250,0],[0,0,0]]
+filename = r"C:\Users\shigf\Program\data\0818_tubefinger_rere\kijunn"
 myfunction.wirte_pkl(motor_angle, filename)

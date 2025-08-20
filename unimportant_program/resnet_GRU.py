@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import keyboard
 from tqdm import tqdm
 from myclass.MyModel import ResNetGRU
+from torch.optim import lr_scheduler
+from torch.utils.tensorboard import SummaryWriter
 
 #1エポックの学習
 def train(model, data_loader):
@@ -30,6 +32,7 @@ def train(model, data_loader):
         loss.backward()  # 逆伝播で勾配を計算
         optimizer.step()  # 最適化
         loss_mean += loss.item()
+
 
 
     loss_mean = loss_mean / (j+1)
@@ -57,7 +60,6 @@ def make_sequence_tensor_stride(x, y, typedf,L, stride):
 
         js = torch.arange(start, end, device=x.device)
         relative_indices = torch.arange(L-1, -1, -1, device=x.device) * stride
-        print(relative_indices)
         indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
 
         # --- ここで NaN 系列を除外する ---
@@ -149,7 +151,7 @@ L = 32
 stride = 1
 
 result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\test"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\test\testnan20250710_161712.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_3000_with_type.pickle"
 resume_training = False   # 再開したい場合は True にする
 
 
@@ -171,7 +173,7 @@ model = ResNetGRU(input_dim=input_dim,output_dim=output_dim, hidden=128)
 model.to(device)
 criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
+scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10)
 
 
 x_data,y_data, typedf = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
@@ -219,8 +221,8 @@ if resume_training and os.path.exists(checkpoint_path):
     train_indices = list(all_indices - test_indices)  # 差分を取る
     train_dataset = Subset(seq_dataset, train_indices)
     test_dataset = Subset(seq_dataset, list(test_indices))  
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,pin_memory=True, num_workers=8, persistent_workers=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=8, persistent_workers=True)
     checkpoint = torch.load(checkpoint_path)
     model.load_state_dict(checkpoint['model_state_dict'])
     optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
@@ -230,8 +232,8 @@ if resume_training and os.path.exists(checkpoint_path):
     print(f"Resuming training from epoch {start_epoch}.")
 else:
     train_dataset, test_dataset = torch.utils.data.random_split(seq_dataset, [r,1-r],generator=torch.Generator().manual_seed(0))
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=8, persistent_workers=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=8, persistent_workers=True)
     myfunction.wirte_pkl(scaler_data, scaler_pass)
     save_test(test_dataset,result_dir)
     start_epoch = 0
@@ -239,15 +241,21 @@ else:
     record_test_loss = []
 
 
+log_dir = os.path.join(result_dir, "logs")
+writer = SummaryWriter(log_dir=log_dir)
+
+
 mintestloss = 999999999
 
 progress = tqdm(total=num_epochs,initial=start_epoch,desc ="Epoch")
+
 try:
     for epoch in range(start_epoch, num_epochs):
         train_loss = train(model, train_loader)
         test_loss  = test(model , test_loader)
         record_train_loss.append(train_loss)
         record_test_loss.append(test_loss)
+        scheduler.step(test_loss)
 
         # 10 エポックごとにログを出す
         if mintestloss > test_loss:
@@ -258,6 +266,7 @@ try:
         if epoch % 10 == 0:
             tqdm.write(f"[{epoch}] train={train_loss:.5f} test={test_loss:.5f}")
 
+        writer.add_scalars("loss", {'train':train_loss, 'test':test_loss, 'lr':optimizer.param_groups[0]['lr']}, epoch)
         progress.update(1)           # ★ これでバーが 1 目盛り進む
 except KeyboardInterrupt:
     print("\n[INFO] Detected Ctrl+C - graceful shutdown…")
@@ -265,6 +274,7 @@ except KeyboardInterrupt:
                     record_train_loss, record_test_loss, checkpoint_path)
     raise          # ← ここで例外を再送出すると finally も確実に走る
 finally:
+    # writer.close()
     save_checkpoint(epoch, model, optimizer,
                     record_train_loss, record_test_loss, checkpoint_path)
     myfunction.wirte_pkl(record_test_loss, os.path.join(result_dir, "3d_testloss"))
