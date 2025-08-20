@@ -12,6 +12,7 @@ import random
 import torch
 import pickle
 import discord
+from dotenv import load_dotenv
 
 
 
@@ -367,6 +368,7 @@ def get_type_change_end(type_vec):
 
 
 def send_message():
+    load_dotenv(r"C:\Users\WRS\Desktop\Matsuyama\env\.env")
     TOKEN = os.getenv("DISCORD_TOKEN")  # .envや環境変数から取得
   
     CHANNEL_ID = 1394557595146125406 # 通知したいチャンネルのID
@@ -379,22 +381,6 @@ def send_message():
         print(f"✅ ログインしました：{client.user}")
         user = await client.fetch_user(258533597848272896)
         await user.send("🎉 プログラムが終了しました！")
-        await client.close()
-
-    client.run(TOKEN)
-def send_message_for_test(column_means):
-    TOKEN = os.getenv("DISCORD_TOKEN")  # .envや環境変数から取得
-
-    CHANNEL_ID = 1394557595146125406 # 通知したいチャンネルのID
-
-    intents = discord.Intents.default()
-    client = discord.Client(intents=intents)
-
-    @client.event
-    async def on_ready():
-        print(f"✅ ログインしました：{client.user}")
-        user = await client.fetch_user(258533597848272896)
-        await user.send("列ごとの平均:", column_means)
         await client.close()
 
     client.run(TOKEN)
