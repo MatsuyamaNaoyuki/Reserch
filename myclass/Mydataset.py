@@ -73,11 +73,21 @@ def apply_align_torch(x:torch.Tensor, fit:Calibfit,
 
     return x3
 
+def nanstd_t(x: torch.Tensor, dim=0, unbiased=False):
+    m = torch.nanmean(x, dim=dim, keepdim=True)
+    mask = ~torch.isnan(x)
+    d = torch.where(mask, x - m, torch.zeros_like(x))
+    sq = d * d
+    cnt = mask.sum(dim=dim, keepdim=False)
+    denom = (cnt - 1 if unbiased else cnt).clamp(min=1)
+    var = sq.sum(dim=dim) / denom
+    return torch.sqrt(var)
+
 def fit_standardizer_torch(x_train: torch.Tensor):
     mu = torch.nanmean(x_train, dim = 0)
-    sd = torch.nanstd(x_train, dim = 0, unbiased = False)
+    sd = nanstd_t(x_train, dim = 0, unbiased = False)
     sd = torch.where(sd < 1e-8, torch.ones_like(sd), sd)
     return mu, sd
 
-def apply_standardized_torch(x: torch.Tensor, mu:torch.Tensor, sd:torch.Tensor):
+def apply_standardize_torch(x: torch.Tensor, mu:torch.Tensor, sd:torch.Tensor):
     return (x-mu) / sd

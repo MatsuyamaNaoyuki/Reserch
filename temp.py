@@ -17,7 +17,13 @@ STEP   = 5000           # ←→・ホイールで動くステップ幅（点）
 
 xdata, ydata, type= myfunction.read_pickle_to_torch(PATH, True, True, True)
 
+kijunx, kijuny, typedf = myfunction.read_pickle_to_torch(PATH, True, True, True)
 
+fitA = Mydataset.fit_calibration_torch(kijunx)
+
+alphaA = torch.ones_like(fitA.amp)
+
+print(alphaA)
 data = Mydataset.fit_calibration_torch(xdata)
 
 print(data)
