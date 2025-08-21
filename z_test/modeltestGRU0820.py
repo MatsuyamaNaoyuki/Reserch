@@ -14,7 +14,7 @@ import pandas as pd
 import os, sys
 import japanize_matplotlib
 from pathlib import Path
-
+from myclass import Mydataset
 
 
 
@@ -205,13 +205,13 @@ def make_row_data_with_gosa(dis_array):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\alluse_stride20\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\tubefinger0806\mixhit10kaifortest.pickle"
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\alluse_stride1\model.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortest.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
 L = 32
-stride = 20
+stride = 1
 
 touch_vis = True
 scatter_motor = True
@@ -232,8 +232,10 @@ if pickle:
     x_data,y_data , typedf= myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
 else:
     x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
-x_data = x_data.to(device)
-y_data = y_data.to(device)
+x_data = x_data
+y_data = y_data
+
+
 
 
 
@@ -241,20 +243,28 @@ y_data = y_data.to(device)
 resultdir = os.path.dirname(modelpath)
 scaler_path = myfunction.find_pickle_files("scaler", resultdir)
 scaler_data = myfunction.load_pickle(scaler_path)
-x_mean = torch.tensor(scaler_data['x_mean']).to(device)
-x_std = torch.tensor(scaler_data['x_std']).to(device)
-y_mean = torch.tensor(scaler_data['y_mean']).to(device)
-y_std = torch.tensor(scaler_data['y_std']).to(device)
-x_change = (x_data - x_mean) / x_std
-y_change = (y_data - y_mean) / y_std
+x_mean = torch.tensor(scaler_data['x_mean'])
+x_std = torch.tensor(scaler_data['x_std'])
+y_mean = torch.tensor(scaler_data['y_mean'])
+y_std = torch.tensor(scaler_data['y_std'])
+fitA = scaler_data['fitA']
+
+alphaA = torch.ones_like(fitA.amp)
+xA_proc = Mydataset.apply_align_torch(x_data, fitA, alphaA)
+x_change = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
+y_change = Mydataset.apply_standardize_torch(y_data, y_mean, y_std)
 
 type_end_list = myfunction.get_type_change_end(typedf)
 
 
 seq_x, seq_y, first_group_len= make_sequence_tensor_stride(x_change, y_data,type_end_list, L=L, stride=stride)
 
-
-
+seq_x = seq_x.to(device)
+seq_y = seq_y.to(device)
+y_mean = y_mean.to(device)
+y_std = y_std.to(device)
+x_mean = x_mean.to(device)
+x_std = x_std.to(device)
 # モデルのロード
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
@@ -265,7 +275,8 @@ model_from_script.eval()
 # x_data から 1 サンプルを取得（例: 0番目のサンプル）
 dis_array1 = []
 dis_array2 = []
-
+prediction_array = []
+real_array = []
 print(f"seq_x の長さ: {len(seq_x)}")
 print(f"first_group_len: {first_group_len}")
 # print(dis_array)
@@ -278,7 +289,8 @@ for i in range(len(seq_x)):
     with torch.no_grad():  # 勾配計算を無効化
         prediction = model_from_script(single_sample)
     prediction = prediction * y_std + y_mean
-    
+    prediction_array.append(prediction)
+    real_array.append(seq_y[sample_idx].tolist())
     distance = culc_gosa(prediction.tolist()[0], seq_y[sample_idx].tolist())
     if i < first_group_len:
         dis_array1.append(distance)
@@ -299,6 +311,9 @@ print("1列ごとの平均:", column_means1.round(2))
 print("2列ごとの平均:", column_means2.round(2))
 # myfunction.send_message_for_test(column_means.round(2))
 
+
+# myfunction.wirte_pkl(prediction_array, "result")
+myfunction.wirte_pkl(real_array, "real")
 print(end-start)
 if touch_vis:
     make_touch_hist()
