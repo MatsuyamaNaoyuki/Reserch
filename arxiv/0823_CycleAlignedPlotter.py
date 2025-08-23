@@ -328,4 +328,4 @@ fig.canvas.mpl_connect("scroll_event", on_scroll)
 refresh_slider_ranges()
 redraw_k(0)
 plt.show()
-# ===== ここまで差し替え =====
+

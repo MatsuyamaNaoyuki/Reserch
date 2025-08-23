@@ -1,13 +1,10 @@
 from myclass import myfunction
 import pandas as pd
+import numpy as np
 
+k = 11
+max_k = 10
 
-df = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortraintypenan20250715_163007.pickle")
+k = int(np.clip(k, 0, max_k))
 
-has_nan = df.isna().any().any()
-
-print("NaNが含まれているか:", has_nan)
-
-# NaN がある場所を確認したい場合（オプション）
-print("NaNのある列ごとの数:")
-print(df.isna().sum())
+myfunction.print_val(k)
