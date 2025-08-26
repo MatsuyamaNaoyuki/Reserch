@@ -270,7 +270,7 @@ def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
     if "type" in df.columns:
         return tensor_data_x,tensor_data_y, df["type"]
     else:
-        return tensor_data_x,tensor_data_y, None
+        return tensor_data_x,tensor_data_y, pd.Series([0] * tensor_data_x.shape[0])
     
 
 

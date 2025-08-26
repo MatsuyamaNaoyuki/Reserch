@@ -110,9 +110,7 @@ def test(model, data_loader, criterion):
         x_train_data = x_train_data.to(device, non_blocking=True)
         y_train_data = y_train_data.to(device, non_blocking=True)
 
-        y_pred = model(x_train_data)
-        loss = criterion(y_pred, y_train_data)
-        
+       
         y_pred = model(x_train_data)  # 順伝播（=予測）
         loss = criterion(y_pred, y_train_data)  # 損失を計算
         loss_mean += loss.item()

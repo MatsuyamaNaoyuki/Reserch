@@ -1,331 +1,219 @@
-import threading, csv, os
-import time, datetime, getopt, sys
-from myclass import myfunction
-import matplotlib.pyplot as plt
-import pickle
+# -*- coding: utf-8 -*-
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 from scipy.signal import find_peaks
-from matplotlib.collections import LineCollection
+from myclass import myfunction  # ←既存のユーティリティ
+
+# ====== 設定 ======
+DATA_PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortraintypenan20250715_163007.pickle"  # small の元データ
+TYPE_COL_ORIG = "type"                             # 元の列名（small を付ける前）
+ROTATE_COL    = "rotate3"  
+KEYS          = ["Mc5"]                              # 極小値を取る列
+# KEYS          = ["force"]                            # 可視化対象（"sensor", "Mc" などでもOK）
+# KEYS          = ["sensor1","sensor2","sensor3"]  
+# KEYS          = ["sensor4","sensor5","sensor6"]  
+# KEYS          = ["sensor7","sensor8","sensor9"]  
+INIT_N_CYCLES = 10                                 # 初期の表示山数(スライダーで変更可)
+# ===================
 
 def get_minimum(x, distance=150, prominence=5):
-    # 1) 極小の検出
+    """極小値インデックスを返す（外れ間隔は後段の揃え方で吸収）"""
     minima, _ = find_peaks(-x, distance=distance, prominence=prominence)
-    minima = np.sort(minima)
-    if len(minima) < 2:
-        return minima.astype(int)
+    return np.sort(minima).astype(int)
 
-    # 2) ロバストに基準間隔を推定（IQRで外れ値を除外）
-    diffs = np.diff(minima)
-    q1, q3 = np.percentile(diffs, [25, 75])
-    mask = (diffs >= q1) & (diffs <= q3)
-    base_interval = int(np.median(diffs[mask])) if mask.any() else int(np.median(diffs))
-    base_interval = max(base_interval, 1)
-
-    # 3) 区間ごとに gap を N 等分して補間（端点に整合）
-    corrected = [int(minima[0])]
-    for i in range(len(minima) - 1):
-        left = int(minima[i])
-        right = int(minima[i+1])
-        gap = right - left
-
-        # その区間に理論的に何本入るか（≒ round(gap/base)）
-        N = int(np.round(gap / base_interval))
-        N = max(N, 1)  # 少なくとも1区間
-
-        if N == 1:
-            # 何も欠けていないので右端だけ追加
-            corrected.append(right)
-        else:
-            # gap を N 等分 → 内点を N-1 個入れる（端点のちょうど間）
-            for k in range(1, N):
-                # 等分の比率できっちり中央に来るように丸める
-                pos = left + int(np.round(k * gap / N))
-                corrected.append(pos)
-            corrected.append(right)
-
-    # 4) 整理（昇順・重複排除）
-    minima_corrected = np.unique(np.array(corrected, dtype=int))
-    return minima_corrected
-
-def align_B_on_A_n_cycles(seriesA, seriesB, a_mins, b_mins, k, n_cycles=10):
+def align_B_on_A_n_cycles(seriesA, seriesB, a_mins, b_mins, k, n_cycles=2):
     """
-    seriesA: DataFrame の列 (A のデータ)
-    seriesB: DataFrame の列 (B のデータ)
-    a_mins, b_mins: 極小値のインデックス配列
-    k: 開始する極小値の番号
-    n_cycles: 何山分を表示するか
+    A の極小[k]..[k+n_cycles] 区間を x 軸にして、
+    B を山単位で切り出して A の先頭位置に重ねる（不足は NaN、余りは捨てる）。
     """
-    # n_cyclesぶん極小値を取る（例: 2山なら a0, a1, a2）
+    if k + n_cycles >= len(a_mins) or k + n_cycles >= len(b_mins):
+        raise ValueError("k と n_cycles の組み合わせが極小値配列の長さを超えています。")
+
     a_start = int(a_mins[k])
-    a_end   = int(a_mins[k+n_cycles])
-    b_start = int(b_mins[k])
-    b_end   = int(b_mins[k+n_cycles])
+    a_end   = int(a_mins[k + n_cycles])
+    x_idx   = np.arange(a_start, a_end + 1, dtype=int)
 
-    x_idx = np.arange(a_start, a_end+1, dtype=int)
-    A_win = seriesA.iloc[a_start:a_end+1].to_numpy()
+    A_win = seriesA.iloc[a_start:a_end + 1].to_numpy()
     B_on_A_win = np.full_like(A_win, np.nan, dtype=float)
 
-    # 各山ごとに対応付け
-    for cycle in range(n_cycles):
-        a0, a1 = int(a_mins[k+cycle]), int(a_mins[k+cycle+1])
-        b0, b1 = int(b_mins[k+cycle]), int(b_mins[k+cycle+1])
+    # 各山ごと（k..k+n_cycles-1）で切り出して、A の先頭(a_start)から詰めていく
+    cursor = 0  # A 側の貼り付け先カーソル
+    for cyc in range(n_cycles):
+        a0, a1 = int(a_mins[k + cyc]), int(a_mins[k + cyc + 1])
+        b0, b1 = int(b_mins[k + cyc]), int(b_mins[k + cyc + 1])
 
-        lenA = a1 - a0
-        lenB = b1 - b0
-        m = min(lenA, lenB)
+        segA = seriesA.iloc[a0:a1].to_numpy()
+        segB = seriesB.iloc[b0:b1].to_numpy()
 
+        m = min(len(segA), len(segB))
         if m > 0:
-            # A のインデックスに合わせて代入
-            B_on_A_win[(a0-a_start):(a0-a_start)+m] = seriesB.iloc[b0:b0+m].to_numpy()
+            B_on_A_win[cursor:cursor + m] = segB[:m]
+        cursor += len(segA)  # A のその山ぶんだけ進める
 
     return x_idx, A_win, B_on_A_win
 
+# ===== データ読み込み & 前処理（small を type で 0/1 に分割 → A0/notouch に命名）=====
+smalldata = myfunction.load_pickle(DATA_PATH)
+if not isinstance(smalldata, pd.DataFrame):
+    smalldata = pd.DataFrame(smalldata)
 
+# small 接頭辞を付与（以降は smallXXX で統一）
+smalldata.columns = ["small" + c if not str(c).startswith("small") else c for c in smalldata.columns]
+TYPE_COL = "small" + TYPE_COL_ORIG
+ROTATE_touch = "touch_small" + ROTATE_COL
+ROTATE_notouch = "notouch_small" + ROTATE_COL
 
+# type で分割
+dftouch = smalldata.loc[smalldata[TYPE_COL] == 0].reset_index(drop=True).add_prefix("touch_")
+dfnotouch = smalldata.loc[smalldata[TYPE_COL] == 1].reset_index(drop=True).add_prefix("notouch_")
 
-smalldata = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle")
-bigdata = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle")
-difdata = smalldata - bigdata 
-smalldata.columns = ["small" + col for col in smalldata.columns]
-bigdata.columns = ["big" + col for col in bigdata.columns]
-df = pd.concat([smalldata, bigdata], axis=1)
+# 並べて参照できるよう横結合（行数は type ごとに違ってもOK：後で揃えて抜き出す）
+df = pd.concat([dftouch, dfnotouch], axis=1)
 
-smallx = smalldata["smallrotate3"].values
+# 可視化対象列の抽出（touch_* と notouch_* の双方を対象）
+cols_all = [c for c in df.columns if any(k.lower() in c.lower() for k in KEYS)]
+cols_all.sort()
 
-smallminilen = get_minimum(smallx)
-
-
-bigx = bigdata["bigrotate3"].values
-
-bigminlen = get_minimum(bigx)
-remove_vals = [573810, 72194, 72450, 573556, 573850, 552812, 552543,9678, 9399, 510778, 511055,51529, 51218]
-bigminlen = bigminlen[~np.isin(bigminlen, remove_vals)]
-add_vals = [72608, 72271,573972, 573636, 552611, 552946, 9451, 9790, 510832, 511166, 51570, 51236]
-bigminlen = np.append(bigminlen, add_vals)
-bigminlen = np.sort(bigminlen)
-diffs = np.diff(bigminlen)
-
-
-
-remove_vals = [585038]
-smallminilen = smallminilen[~np.isin(smallminilen, remove_vals)]
-add_vals = [584996]
-smallminilen= np.append(smallminilen, add_vals)
-smallminilen = np.sort(smallminilen)
-
-
-print(len(smallminilen))
-# 最小と最大のインデックス
-min_idx = np.argmin(diffs)
-max_idx = np.argmax(diffs)
-
-print("間隔の最小値:", diffs[min_idx],
-      " -> 区間:", smallminilen[min_idx], "～", smallminilen[min_idx+1])
-
-print("間隔の最大値:", diffs[max_idx],
-      " -> 区間:", smallminilen[max_idx], "～", smallminilen[max_idx+1])
-
-
-# df = difdata 
-
-
-
-# ===== 設定 =====
-PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\0818_tubefinger_kijun_rere20250820_173021.pickle"
-KEYS = ["Mc5"] 
-# KEYS = ["sensor"] 
-# KEYS = ["Mc"] 
-WINDOW = 5000          # 1画面で表示する点数
-STEP   = 5000           # ←→・ホイールで動くステップ幅（点）
-# =================
- # どれかを含む列を拾う
-
-
-# # データ読み込み
-# df = pd.read_pickle(PATH)
-# df = pd.DataFrame(df).reset_index(drop=True)  # インデックスは0,1,2,...にする
-
-COLUMNS_TO_PLOT = [c for c in df.columns
-                   if any(k.lower() in str(c).lower() for k in KEYS)]
-COLUMNS_TO_PLOT.sort()
-
-# 存在チェック
-
-
-
-
-for col in COLUMNS_TO_PLOT:
-    if col not in df.columns:
-        raise KeyError(f"列が見つかりません: {col}. 利用可能: {list(df.columns)}")
-
-n = len(df)
-if n == 0:
-    raise ValueError("データが空です。")
-
-
-
+# touch/notouch の対応ペア（尾が同じものを対応付け）
 pairs = []
-for c in COLUMNS_TO_PLOT:
-    if c.startswith("big"):
-        tail = c[3:]
-        a_col = "small" + tail
-        if a_col in df.columns:
-            pairs.append((a_col, c))
+for c in cols_all:
+    if c.startswith("notouch_"):
+        tail = c[len("notouch_"):]
+        touch_col = "touch_" + tail
+        if touch_col in df.columns:
+            pairs.append((touch_col, c))
 
-myfunction.print_val(pairs)
-a_mins = smallminilen
-b_mins = bigminlen
-max_k = len(a_mins) - 3
+if not pairs:
+    raise RuntimeError("対応ペアが見つかりませんでした。KEYS を見直してください。")
 
+# 極小値（touch/notouch それぞれの rotate3 から）
+if ROTATE_touch not in df.columns or ROTATE_notouch not in df.columns:
+    raise KeyError(f"回転列が見つかりません: {ROTATE_touch}, {ROTATE_notouch}")
 
+a_mins = get_minimum(df[ROTATE_touch].to_numpy())
+b_mins = get_minimum(df[ROTATE_notouch].to_numpy())
 
-# 図の作成
-fig, ax = plt.subplots(figsize=(10, 5))
-plt.subplots_adjust(bottom=0.18)  # スライダー用に下を少し空ける
-
+# ===== 可視化：n 山ぶん + スライダー =====
+fig, ax = plt.subplots(figsize=(12, 6))
+plt.subplots_adjust(bottom=0.18)
 
 linesA = {}
 linesB = {}
 
-k0 = 0
-x_idx0, _, _=align_B_on_A_n_cycles(df[pairs[0][0]], df[pairs[0][1]], a_mins, b_mins, k0)
-for a_cols, b_cols in pairs:
-    _, A_win0, B_win0 = align_B_on_A_n_cycles(df[a_cols], df[b_cols], a_mins, b_mins, k0)
-    (lA,) = ax.plot(x_idx0, A_win0, label=a_cols, alpha=0.9)
-    (lB,) = ax.plot(x_idx0, B_win0, label=b_cols, alpha=0.9)
-    linesA[a_cols] = lA
-    linesB[b_cols] = lB
+# 初期描画（最初の k=0）
+n_cycles = INIT_N_CYCLES
 
-ax.set_title("Two cycles aligned on A's minima (B is truncated/NaN-filled)")
-ax.set_xlabel("Row Index (A)")
+def compute_max_k():
+    # k..k+n_cycles が A/B の両方で有効になる最大 k
+    return max(0, min(len(a_mins), len(b_mins)) - (n_cycles + 1))
+
+max_k = compute_max_k()
+
+# 一度だけ line を作っておき、後は set_data で更新
+k0 = 0
+x0, _, _ = align_B_on_A_n_cycles(df[pairs[0][0]], df[pairs[0][1]], a_mins, b_mins, k0, n_cycles=n_cycles)
+for a_col, b_col in pairs:
+    _, Awin, Bwin = align_B_on_A_n_cycles(df[a_col], df[b_col], a_mins, b_mins, k0, n_cycles=n_cycles)
+    (lA,) = ax.plot(x0, Awin, label=a_col, alpha=0.9, color="red")
+    (lB,) = ax.plot(x0, Bwin, label=b_col, alpha=0.9, color="blue")
+    linesA[a_col] = lA
+    linesB[b_col] = lB
+
+ax.set_title("A(type=0) vs A(type=1) aligned by minima")
+ax.set_xlabel("Row Index (touch axis)")
 ax.set_ylabel("Value")
 ax.grid(True)
 ax.legend(ncol=2)
 
-
-
+# y 範囲は全体で固定（動的にしない）
 ymin, ymax = np.inf, -np.inf
-for l in list(linesA.values()) + list(linesB.values()):
-    x, y = l.get_data()
-    if len(y):
-        yv = np.array(y, float)
-        yv = yv[~np.isnan(yv)]
-        if yv.size:
-            ymin = min(ymin, np.min(yv))
-            ymax = max(ymax, np.max(yv))
-
-if not np.isfinite(ymin):
-    ymin, ymax = -1.0, 1.0
-
+for a_col, b_col in pairs:
+    yA = df[a_col].to_numpy(dtype=float)
+    yB = df[b_col].to_numpy(dtype=float)
+    for arr in (yA, yB):
+        arr = arr[np.isfinite(arr)]
+        if arr.size:
+            ymin = min(ymin, np.min(arr))
+            ymax = max(ymax, np.max(arr))
+if not np.isfinite(ymin): ymin, ymax = -1.0, 1.0
 pad = 0.05 * (ymax - ymin if ymax > ymin else 1.0)
 ax.set_ylim(ymin - pad, ymax + pad)
-# ===== ここから差し替え：スライダー2本 + 同期 =====
-
-# 初期サイクル数
-n_cycles = 10
-
-def compute_max_k():
-    # k..k+n_cycles が両方で有効になる上限
-    mk = min(len(a_mins), len(b_mins)) - (n_cycles + 1)
-    return max(0, mk)
-
-max_k = compute_max_k()
+# ax.set_ylim(680,820)
+# ax.set_ylim(-200,500)
 
 def redraw_k(k:int):
+    """k から n_cycles 山ぶんに更新"""
     k = int(np.clip(k, 0, max_k))
-    x_idx, _, _ = align_B_on_A_n_cycles(
-        df[pairs[0][0]], df[pairs[0][1]],
-        a_mins, b_mins, k, n_cycles=n_cycles
-    )
+    x_idx, _, _ = align_B_on_A_n_cycles(df[pairs[0][0]], df[pairs[0][1]], a_mins, b_mins, k, n_cycles=n_cycles)
     ax.set_xlim(x_idx[0], x_idx[-1])
-
     for a_col, b_col in pairs:
-        x_idx, A_win, B_win = align_B_on_A_n_cycles(
-            df[a_col], df[b_col],
-            a_mins, b_mins, k, n_cycles=n_cycles
-        )
-        linesA[a_col].set_data(x_idx, A_win)
-        linesB[b_col].set_data(x_idx, B_win)
+        x_idx, Awin, Bwin = align_B_on_A_n_cycles(df[a_col], df[b_col], a_mins, b_mins, k, n_cycles=n_cycles)
+        linesA[a_col].set_data(x_idx, Awin)
+        linesB[b_col].set_data(x_idx, Bwin)
 
     ax.set_title(
-        f"Aligned on A's minima  |  k={k} → k+{n_cycles}={k+n_cycles}  "
-        f"(A idx: {int(a_mins[k])}..{int(a_mins[k+n_cycles])})"
+        f"A(type=0) vs A(type=1) aligned by minima | k={k} → k+{n_cycles}={k+n_cycles} "
+        f"(touch idx: {int(a_mins[k])}..{int(a_mins[k+n_cycles])})"
     )
     fig.canvas.draw_idle()
 
-# --- スライダー領域 ---
+# スライダー（k と n_cycles）
 ax_slider_k = plt.axes([0.12, 0.08, 0.76, 0.04])
 ax_slider_n = plt.axes([0.12, 0.03, 0.76, 0.04])
 
 s_k = Slider(ax_slider_k, "Start cycle k", 0, max_k, valinit=0, valstep=1)
-s_n = Slider(ax_slider_n, "n_cycles", 1, 10, valinit=n_cycles, valstep=1)  # 1～10山で調整可
+s_n = Slider(ax_slider_n, "n_cycles", 1, 10, valinit=n_cycles, valstep=1)
 
 def refresh_slider_ranges():
-    """n_cycles変更時に k の上限を更新し、はみ出しを補正"""
     global max_k
     max_k = compute_max_k()
-    # Slider の上限を更新（matplotlib >=3.8 は set_valmax、古い版は private属性で代替）
     try:
-        s_k.valmax = max_k   # 互換目的：古いバージョンでも動くように
+        s_k.valmax = max_k
         s_k.ax.set_xlim(s_k.valmin, s_k.valmax)
     except Exception:
         pass
-    # 現在の k を補正
-    k_now = int(round(s_k.val))
-    if k_now > max_k:
+    if int(round(s_k.val)) > max_k:
         s_k.set_val(max_k)
 
 def on_slide_k(val):
     k = int(round(val))
     if k != int(round(s_k.val)):
-        s_k.set_val(k)  # つまみ表示を整数位置に
-        return          # set_val が再度この関数を呼ぶので一度返す
+        s_k.set_val(k); return
     redraw_k(k)
 
 def on_slide_n(val):
     global n_cycles
     n_cycles = int(round(val))
-    # n_cycles 変更に伴い k 範囲を更新
     refresh_slider_ranges()
-    # 現在の k で再描画
     redraw_k(int(round(s_k.val)))
 
 s_k.on_changed(on_slide_k)
 s_n.on_changed(on_slide_n)
-# ① ページ送り：n_cycles 山ぶん一気に移動
-def step_pages(delta_blocks: int):
-    # 現在の k（開始サイクル）
-    k_now = int(round(s_k.val))
-    # ページ数 × n_cycles だけ進める/戻す
-    k_new = k_now + delta_blocks * n_cycles
-    # 範囲内にクリップ
-    k_new = max(0, min(max_k, k_new))
-    # スライダー更新 → on_slide_k 経由で redraw
-    s_k.set_val(k_new)
 
-# ② 矢印キーでページ送り（←/↓: 前ページ, →/↑: 次ページ）
+# ページ送り：n_cycles 山単位で進む/戻る
+def step_pages(delta_blocks:int):
+    k_now = int(round(s_k.val))
+    k_new = max(0, min(max_k, k_now + delta_blocks * n_cycles))
+    s_k.set_val(k_new)  # これで on_slide_k → redraw_k が呼ばれる
+
 def on_key(event):
     if event.key in ("left", "down"):
         step_pages(-1)
     elif event.key in ("right", "up"):
         step_pages(1)
 
-fig.canvas.mpl_connect("key_press_event", on_key)
-
-# ③ マウスホイールでもページ送り（上=前ページ / 下=次ページ）
 def on_scroll(event):
     if event.button == "up":
         step_pages(-1)
     elif event.button == "down":
         step_pages(1)
 
+fig.canvas.mpl_connect("key_press_event", on_key)
 fig.canvas.mpl_connect("scroll_event", on_scroll)
-
 
 # 初期表示
 refresh_slider_ranges()
 redraw_k(0)
 plt.show()
-# ===== ここまで差し替え =====
