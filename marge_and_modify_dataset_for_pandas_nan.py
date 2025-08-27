@@ -101,7 +101,7 @@ def data_marge_v2(motiondata,motionlen, motordata, motorlen, magsensor, maglen):
 
 
 dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\base"
-magfile = myfunction.find_pickle_files("magsensor", directory=dir)
+magfile = myfunction.find_pickle_files("magsensor")
 magsensor = myfunction.load_pickle(magfile)
 magdata = []
 for magrow in magsensor:
@@ -109,13 +109,13 @@ for magrow in magsensor:
 maglen = len(magdata[0]) - 1
 
 
-motorfile = myfunction.find_pickle_files("motor", directory=dir)
+motorfile = myfunction.find_pickle_files("motor")
 motordata = myfunction.load_pickle(motorfile)
 motorlen = int((len(motordata[0]) - 1) / 2) 
 
 
 
-motionfile = myfunction.find_pickle_files("motioncapture", directory=dir)
+motionfile = myfunction.find_pickle_files("motioncapture")
 motiondata = myfunction.load_pickle(motionfile)
 motionlen = int((len(motiondata[0]) - 1) /3)
 
@@ -159,7 +159,7 @@ print(f"motionで削除された行数: {nan_row_count}")
 
 cols_to_check = ['force1', 'force2', 'force3']
 
-row_mask = ((df[cols_to_check] > 500) | (df[cols_to_check] < -200)).any(axis=1)
+row_mask = ((df[cols_to_check] > 10000) | (df[cols_to_check] < -2000)).any(axis=1)
 # 該当行数をカウント
 nan_row_count = row_mask.sum()
 # その行すべてをNaNに置き換え

@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
 # ===== 設定 =====
-PATH = r"C:\Users\shigf\Program\Reserch\0818_tubefinger_kijun_rere20250819_141333.pickle"
+PATH = r"C:\Users\shigf\Program\Reserch\0818_tubefinger_kijun_rere20250820_173021.pickle"
 # KEYS = ["rotate", "force"] 
 # KEYS = ["sensor"] 
 KEYS = ["Mc"] 

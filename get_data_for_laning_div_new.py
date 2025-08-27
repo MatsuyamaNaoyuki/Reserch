@@ -106,6 +106,7 @@ def move(Motors, howtomovepath):
     print(change_angle)
     time_len = None
     # time_len = [4,4,10,10,7,7, 5,5, 9,9]
+    time.sleep(5)
     for i, angles in enumerate(change_angle):
         print(angles)
         print(str(i) + "/" +  str(len_angle))
