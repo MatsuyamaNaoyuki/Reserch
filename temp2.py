@@ -1,130 +1,145 @@
 import threading, csv, os
 import time, datetime, getopt, sys
 from myclass import myfunction
-from myclass.MyDynamixel4 import MyDynamixel
+import matplotlib.pyplot as plt
 import pickle
+import numpy as np
+import pandas as pd
+from matplotlib.widgets import Slider
+
+smalldata = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle")
+bigdata = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle")
+difdata = smalldata - bigdata 
+smalldata.columns = ["small" + col for col in smalldata.columns]
+df = pd.concat([smalldata, bigdata], axis=1)
+
+# df = difdata 
 
 
 
+# ===== 設定 =====
+PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\0818_tubefinger_kijun_rere20250820_173021.pickle"
+KEYS = ["rotate"] 
+# KEYS = ["sensor"] 
+# KEYS = ["Mc"] 
+WINDOW = 5000          # 1画面で表示する点数
+STEP   = 5000           # ←→・ホイールで動くステップ幅（点）
+# =================
+ # どれかを含む列を拾う
 
 
-        
-def get_dynamixel(Motors, motorpath):
-    motor_datas = []
-    filepath = motorpath
-    filenumber = 1
-    i = 0
-    try:
-        while not stop_event.is_set():  # stop_eventがセットされるまでループ
-            now_time  = datetime.datetime.now()
-            motor_angle = Motors.get_present_angles()
-            motor_current = Motors.get_present_currents()
-            # formatted_now = now_time.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-            motor_data = myfunction.combine_lists(motor_angle, motor_current)
-            motor_data.insert(0, now_time)
-            motor_datas.append(motor_data)
-            if write_pkl_event_motor.is_set():
-                print(motor_data)
-                # writing_motor_event.set()
-                now = datetime.datetime.now()
-                filename = filepath + str(filenumber) + "_" +now.strftime('%Y%m%d_%H%M%S') + '.pickle'
-                with open(filename, "wb") as f:
-                    pickle.dump(motor_datas, f)  # motor_datasをpickleで保存
-                write_pkl_event_motor.clear()  # write_pkl_eventをリセット
-                filenumber = filenumber + 1
-                # writing_motor_event.clear()
-    finally:
-        thread_name = threading.current_thread().name
-        results[thread_name] = motor_datas
+# # データ読み込み
+# df = pd.read_pickle(PATH)
+# df = pd.DataFrame(df).reset_index(drop=True)  # インデックスは0,1,2,...にする
 
-# daemon=Trueで強制終了
+COLUMNS_TO_PLOT = [c for c in df.columns
+                   if any(k.lower() in str(c).lower() for k in KEYS)]
+COLUMNS_TO_PLOT.sort()
+
+# 存在チェック
+for col in COLUMNS_TO_PLOT:
+    if col not in df.columns:
+        raise KeyError(f"列が見つかりません: {col}. 利用可能: {list(df.columns)}")
+
+n = len(df)
+if n == 0:
+    raise ValueError("データが空です。")
 
 
-def move(Motors, howtomovepath):
-    with open(howtomovepath, mode='br') as fi:
-        change_angle = pickle.load(fi)
-    len_angle = len(change_angle)
-    print(change_angle)
-    time_len = None
-    # time_len = [4,4,10,10,7,7, 5,5, 9,9]
-    for i, angles in enumerate(change_angle):
-        print(angles)
-        print(str(i) + "/" +  str(len_angle))
-        if time_len is None:
-            Motors.move_to_points(angles, times = 7)
-        else:
-            Motors.move_to_points(angles, times = time_len[i%len(time_len)])
-        if i% 1000 == 0:
-            write_pkl_event_motor.set()
-            write_pkl_event_mag.set()
-            write_pkl_event_Mc.set()
-            time.sleep(5)
+# 数値化（文字列が混じっていてもNaNにして続行）
+df[COLUMNS_TO_PLOT] = df[COLUMNS_TO_PLOT].apply(pd.to_numeric, errors='coerce')
 
-    # time.sleep(2)
-    stop_event.set()
-    
-    
+# 列ごとに z-score 標準化: (x - mean) / std
+# mu = df[COLUMNS_TO_PLOT].mean()
+# sigma = df[COLUMNS_TO_PLOT].std(ddof=0)        # 母標準偏差（0）で安定化
+# sigma = sigma.replace(0, np.nan)               # 定数列はゼロ割防止
+# df_std = (df[COLUMNS_TO_PLOT] - mu) / sigma
+# df_std = df_std.fillna(0)                      # ゼロ割や全NaN区間は0で埋める
 
+# # 以降、描画はこの SRC を参照（元dfは変更しない）
+# SRC = df_std
 
+SRC = df
+# ウィンドウ長の調整
+WINDOW = min(WINDOW, n)
+max_start = max(0, n - WINDOW)
 
+# 図の作成
+fig, ax = plt.subplots(figsize=(10, 5))
+plt.subplots_adjust(bottom=0.15)  # スライダー用に下を少し空ける
 
+# 初期データ（先頭から）
+start = 0
+end = start + WINDOW
+x = np.arange(start, end)
 
-# ----------------------------------------------------------------------------------------
+lines = {}
+for col in COLUMNS_TO_PLOT:
+    y = SRC[col].iloc[start:end].to_numpy()
+    (line,) = ax.plot(x, y, label=col)
+    lines[col] = line
 
+ax.set_title("Selected Columns (scroll with slider / arrow keys / wheel)")
+ax.set_xlabel("Row Index")
+ax.set_ylabel("Value")
+ax.grid(True)
+ax.legend()
 
-# result_dir = r"0520\nohit1500kai"
+def update_ylim(s, e):
+    # 表示中の全列のmin/maxをまとめて取得（NaNは無視）
+    ymin = np.inf
+    ymax = -np.inf
+    for col in COLUMNS_TO_PLOT:
+        yy = SRC[col].iloc[s:e].to_numpy()
+        if np.all(np.isnan(yy)):
+            continue
+        ymin = min(ymin, np.nanmin(yy))
+        ymax = max(ymax, np.nanmax(yy))
+    if not np.isfinite(ymin) or not np.isfinite(ymax):
+        ymin, ymax = -1.0, 1.0
+    pad = 0.05 * (ymax - ymin if ymax > ymin else 1.0)
+    ax.set_ylim(ymin - pad, ymax + pad)
 
-base_path = r"C:\Users\shigf\Program\data\temp"
+def redraw(start_idx: int):
+    start_idx = int(max(0, min(start_idx, max_start)))
+    end_idx = start_idx + WINDOW
+    x = np.arange(start_idx, end_idx)
 
-# ----------------------------------------------------------------------------------------
+    for col, line in lines.items():
+        y = SRC[col].iloc[start_idx:end_idx].to_numpy()
+        line.set_data(x, y)
 
+    ax.set_xlim(x[0], x[-1])
+    update_ylim(start_idx, end_idx)
+    fig.canvas.draw_idle()
+    return start_idx
 
+# スライダー
+ax_slider = plt.axes([0.1, 0.05, 0.8, 0.04])
+slider = Slider(ax_slider, "Start", 0, max_start, valinit=0, valstep=1)
 
+def on_slider(val):
+    redraw(val)
+slider.on_changed(on_slider)
 
+# キー操作（←→でSTEPずつ移動）
+def on_key(event):
+    cur = int(slider.val)
+    if event.key == "left":
+        slider.set_val(cur - STEP)
+    elif event.key == "right":
+        slider.set_val(cur + STEP)
+fig.canvas.mpl_connect("key_press_event", on_key)
 
+# マウスホイールでも移動（上=戻る/下=進む）
+def on_scroll(event):
+    cur = int(slider.val)
+    if event.button == "up":
+        slider.set_val(cur - STEP)
+    elif event.button == "down":
+        slider.set_val(cur + STEP)
+fig.canvas.mpl_connect("scroll_event", on_scroll)
 
-
-
-print(base_path)
-motorpath = os.path.join(base_path, "motor_")
-magpath = os.path.join(base_path, "mag_")
-mcpath = os.path.join(base_path, "mc_")
-howtomovepath = myfunction.find_pickle_files("howtomove", base_path)
-
-
-Motors = MyDynamixel()
-results = {}
-stop_event = threading.Event()
-write_pkl_event_motor = threading.Event()
-write_pkl_event_mag = threading.Event()
-write_pkl_event_Mc = threading.Event()
-
-print("◆スレッド:",threading.current_thread().name)
-
-thread1 = threading.Thread(target=get_dynamixel, args=(Motors,motorpath,), name="motor")
-thread3 = threading.Thread(target=move, args=(Motors,howtomovepath,), name="move")
-
-
-thread1.start()
-thread3.start()
-
-
-thread1.join()
-thread3.join()
-
-
-print("A")
-for key, value in results.items():
-    print("IN")
-    filename = key
-    now = datetime.datetime.now()
-    filename = os.path.dirname(__file__) +"\\" + filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
-    with open(filename, 'wb') as fo:
-        pickle.dump(value, fo)
-    
-
-
-
-
-
-# print("Results:", results)
+# 初期描画
+update_ylim(start, end)
+plt.show()

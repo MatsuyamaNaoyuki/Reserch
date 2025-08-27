@@ -12,7 +12,8 @@ import random
 import torch
 import pickle
 import discord
-
+from dotenv import load_dotenv
+import inspect
 
 
 # def make_3D_graph(path, firstrow = 1, lastrow = 5):
@@ -269,7 +270,7 @@ def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
     if "type" in df.columns:
         return tensor_data_x,tensor_data_y, df["type"]
     else:
-        return tensor_data_x,tensor_data_y, None
+        return tensor_data_x,tensor_data_y, pd.Series([0] * tensor_data_x.shape[0])
     
 
 
@@ -367,6 +368,7 @@ def get_type_change_end(type_vec):
 
 
 def send_message():
+    load_dotenv(r"C:\Users\WRS\Desktop\Matsuyama\env\.env")
     TOKEN = os.getenv("DISCORD_TOKEN")  # .envや環境変数から取得
   
     CHANNEL_ID = 1394557595146125406 # 通知したいチャンネルのID
@@ -382,19 +384,13 @@ def send_message():
         await client.close()
 
     client.run(TOKEN)
-def send_message_for_test(column_means):
-    TOKEN = os.getenv("DISCORD_TOKEN")  # .envや環境変数から取得
 
-    CHANNEL_ID = 1394557595146125406 # 通知したいチャンネルのID
 
-    intents = discord.Intents.default()
-    client = discord.Client(intents=intents)
 
-    @client.event
-    async def on_ready():
-        print(f"✅ ログインしました：{client.user}")
-        user = await client.fetch_user(258533597848272896)
-        await user.send("列ごとの平均:", column_means)
-        await client.close()
-
-    client.run(TOKEN)
+def print_val(val):
+    # 呼び出し元のソースコードを取得
+    frame = inspect.currentframe().f_back
+    line = inspect.getframeinfo(frame).code_context[0]
+    # 引数に渡された部分を取り出す
+    var_name = line.strip().split("print_val(")[1].split(")")[0]
+    print(f"{var_name}: {val}")

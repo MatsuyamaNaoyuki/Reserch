@@ -5,24 +5,29 @@ from matplotlib import cm
 from myclass import myfunction
 import numpy as np
 
-estimation_array = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\all_use_interval\prediction20250508_153726.pickle")
-y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_Diffusion\all_use_interval\real_val20250508_153726.pickle")
+y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\Reserch\real20250821_135157.pickle")
+estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\Reserch\result20250821_133614.pickle")
 
 
 # visual_index = range(0,len(y_data),10)
-list_ydata = y_data.tolist()
+list_estimation_array = [t.cpu().tolist()[0] for t in estimation_array]
 
-estimation_array = estimation_array[::5]
-list_ydata = list_ydata[::5]
+# print(list_ydata)
+# estimation_array = estimation_array[::5]
+# list_ydata = list_ydata[::5]
 # list_ydata = [list_ydata[i] for i in visual_index]
 
 
-x = [row[9] for row in list_ydata]
-y = [row[10] for row in list_ydata]
-z = [row[11] for row in list_ydata]
-ex = [row[9] for row in estimation_array]
-ey = [row[10] for row in estimation_array]
-ez = [row[11] for row in estimation_array]
+half= len(y_data) // 2
+
+x  = [row[9]  for row in y_data[:half:5]]
+y  = [row[10] for row in y_data[:half:5]]
+z  = [row[11] for row in y_data[:half:5]]
+
+ex = [row[9]  for row in list_estimation_array[:half:5]]
+ey = [row[10] for row in list_estimation_array[:half:5]]
+ez = [row[11] for row in list_estimation_array[:half:5]]
+
 
 vx = [ai - bi for ai, bi in zip(ex, x)]
 vy = [ai - bi for ai, bi in zip(ey, y)]

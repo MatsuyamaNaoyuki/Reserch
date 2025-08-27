@@ -67,19 +67,32 @@ def train(model, train_loader, optimizer, criterion):
 def test(model, test_loader, criterion):
     model.eval()
     loss_mean = 0
+    pi_dev_sum = 0.0
+    sigma_mean_sum = 0.0
+    sigma_min_sum = 0.0
+    n_batches = 0
 
-    for rotate_batch, xyz_batch in test_loader:
-        rotate_batch = rotate_batch.to(device, non_blocking = True)
-        xyz_batch = xyz_batch.to(device, non_blocking = True)
 
-        pi, mu, sigma = model(xyz_batch)
-        loss = criterion(pi, mu, sigma, xyz_batch)
+    with torch.no_grad():
+        for rotate_batch, xyz_batch in test_loader:
+            rotate_batch = rotate_batch.to(device, non_blocking = True)
+            xyz_batch = xyz_batch.to(device, non_blocking = True)
+            pi, mu, sigma = model(rotate_batch)
+            loss = criterion(pi, mu, sigma, xyz_batch)
+            loss_mean += loss.item() * rotate_batch.size(0)
 
-        loss_mean += loss.item() * rotate_batch.size(0)
+            pi_dev_sum += torch.abs(pi[:, 0] - 0.5).mean().item()
+            sigma_mean_sum += sigma.mean().item()
+            sigma_min_sum += sigma.min().item()
+            n_batches += 1
 
+
+    avg_pi_dev     = pi_dev_sum / n_batches
+    avg_sigma_mean = sigma_mean_sum / n_batches
+    avg_sigma_min  = sigma_min_sum / n_batches
     loss_mean = loss_mean / len(test_loader.dataset)
 
-    return loss_mean
+    return loss_mean, avg_pi_dev, avg_sigma_mean, avg_sigma_min
 
 
 
@@ -138,6 +151,11 @@ def main():
     y_last3 = Mydataset.apply_standardize_torch(y_last3, y_mean, y_std)
 
 
+    mask = torch.isfinite(rotate_data).all(dim=1) & torch.isfinite(y_last3).all(dim=1)
+    rotate_data_clean = rotate_data[mask]
+    y_last3_clean     = y_last3[mask]
+    dataset = torch.utils.data.TensorDataset(rotate_data_clean, y_last3_clean)
+
     scaler_data = {
         'x_mean': x_mean.cpu().numpy(),  # GPUからCPUへ移動してnumpy配列へ変換
         'x_std': x_std.cpu().numpy(),
@@ -152,11 +170,11 @@ def main():
     if resume_training and os.path.exists(checkpoint_path):
         test_indices_path = myfunction.find_pickle_files("test_indices", result_dir)
         test_indices = myfunction.load_pickle(test_indices_path)
-        all_indices = set(range(len(rotate_data)))
+        all_indices = set(range(len(dataset)))
         test_indices = set(test_indices)  # Set に変換（高速化）
         train_indices = list(all_indices - test_indices)  # 差分を取る
-        train_dataset = Subset(rotate_data, train_indices)
-        test_dataset = Subset(rotate_data, list(test_indices))  
+        train_dataset = Subset(dataset, train_indices)
+        test_dataset = Subset(dataset, list(test_indices))  
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,pin_memory=True, num_workers=0, persistent_workers=False)
         test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=0, persistent_workers=False)
         checkpoint = torch.load(checkpoint_path)
@@ -167,9 +185,7 @@ def main():
         record_test_loss = checkpoint['record_test_loss']
         print(f"Resuming training from epoch {start_epoch}.")
     else:
-        dataset = torch.utils.data.TensorDataset(rotate_data, y_last3)
-
-        train_dataset, test_dataset = torch.utils.data.random_split(dataset, shuffle=True, pin_memory=True, num_workers=1, persistent_workers=True)
+        train_dataset, test_dataset = torch.utils.data.random_split(dataset, [r,1-r],generator=torch.Generator().manual_seed(0))
         train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=1, persistent_workers=True)
         test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=1, persistent_workers=True)
         myfunction.wirte_pkl(scaler_data, scaler_pass)
@@ -188,9 +204,10 @@ def main():
     try:
         for epoch in range(start_epoch, num_epochs):
             train_loss = train(model, train_loader, optimizer, criterion)
-            test_loss = test(model, test_loader, criterion)
+            test_loss, pi_dev, sigma_mean, sigma_min = test(model, test_loader, criterion)
             record_train_loss.append(train_loss)
             record_test_loss.append(test_loss)
+            scheduler.step(test_loss)
 
             if mintestloss > test_loss:
                 counter_step = 0
@@ -205,7 +222,7 @@ def main():
 
 
             if epoch % 10 == 0:
-                tqdm.write(f"[{epoch}] train={train_loss:.5f} test={test_loss:.5f}")
+                tqdm.write(f"[{epoch}] train={train_loss:.5f} test={test_loss:.5f} pi_dev={pi_dev:.5f} sigma_mean={sigma_mean:.5f} sigma_min={sigma_min:}")
 
             writer.add_scalars("loss", {'train':train_loss, 'test':test_loss, 'lr':optimizer.param_groups[0]['lr']}, epoch)
             progress.update(1)     

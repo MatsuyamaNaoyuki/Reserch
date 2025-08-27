@@ -14,7 +14,7 @@ import pandas as pd
 import os, sys
 import japanize_matplotlib
 from pathlib import Path
-
+from myclass import Mydataset
 
 
 
@@ -205,21 +205,15 @@ def make_row_data_with_gosa(dis_array):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\model20250715_203305.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortesttype.pickle"
-motor_angle = True
-motor_force = True
-magsensor = True
-L = 32
-stride = 1
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2\model.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortest.pickle"
 
 touch_vis = True
 scatter_motor = True
 row_data_swith = True
 #-----------------------------------------------------------------------------------------------------------------
 
-input_dim = 3 * motor_angle + 3 * motor_force + 9 * magsensor
-output_dim = 12
+input_dim = 3
 
 
 
@@ -227,13 +221,9 @@ output_dim = 12
 pickle = detect_file_type(filename)
 basepath = Path(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult")
 
+rotate_data, y_data, typedf= myfunction.read_pickle_to_torch(filename, True, False, False)
+y_last3 = y_data[:, -3:]
 
-if pickle:
-    x_data,y_data , typedf= myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
-else:
-    x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
-x_data = x_data.to(device)
-y_data = y_data.to(device)
 
 
 
@@ -241,21 +231,22 @@ y_data = y_data.to(device)
 resultdir = os.path.dirname(modelpath)
 scaler_path = myfunction.find_pickle_files("scaler", resultdir)
 scaler_data = myfunction.load_pickle(scaler_path)
-x_mean = torch.tensor(scaler_data['x_mean']).to(device)
-x_std = torch.tensor(scaler_data['x_std']).to(device)
-y_mean = torch.tensor(scaler_data['y_mean']).to(device)
-y_std = torch.tensor(scaler_data['y_std']).to(device)
-x_change = (x_data - x_mean) / x_std
-y_change = (y_data - y_mean) / y_std
+x_mean = torch.tensor(scaler_data['x_mean'])
+x_std = torch.tensor(scaler_data['x_std'])
+y_mean = torch.tensor(scaler_data['y_mean'])
+y_std = torch.tensor(scaler_data['y_std'])
+fitA = scaler_data['fitA']
 
-type_end_list = myfunction.get_type_change_end(typedf)
+alphaA = torch.ones_like(fitA.amp)
+xA_proc = Mydataset.apply_align_torch(rotate_data, fitA, alphaA)
+x_change = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
+y_change = Mydataset.apply_standardize_torch(y_last3, y_mean, y_std)
+
+mask = torch.isfinite(x_change).all(dim=1) & torch.isfinite(y_last3).all(dim=1)
+rotate_data_clean = x_change[mask]
+y_last3_clean     = y_last3[mask]
 
 
-seq_x, seq_y, first_group_len= make_sequence_tensor_stride(x_change, y_data,type_end_list, L=L, stride=stride)
-
-
-
-# モデルのロード
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 model_from_script.eval()
@@ -267,49 +258,49 @@ dis_array1 = []
 dis_array2 = []
 prediction_array = []
 real_array = []
-print(f"seq_x の長さ: {len(seq_x)}")
-print(f"first_group_len: {first_group_len}")
-# print(dis_array)
+mu_list = []
+
+y_std = y_std.to(device)
+y_mean = y_mean.to(device)
 
 
-start = time.time()
-for i in range(len(seq_x)):
+for i in range(len(rotate_data_clean)):
     sample_idx = i  # 推論したいサンプルのインデックス
-    single_sample = seq_x[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
+    single_sample = rotate_data_clean[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
+    single_sample = single_sample.to(device)
     with torch.no_grad():  # 勾配計算を無効化
-        prediction = model_from_script(single_sample)
-    prediction = prediction * y_std + y_mean
-    prediction_array.append(prediction)
-    real_array.append(seq_y[sample_idx].tolist())
-    distance = culc_gosa(prediction.tolist()[0], seq_y[sample_idx].tolist())
-    if i < first_group_len:
-        dis_array1.append(distance)
-    else:
-        dis_array2.append(distance)
-end = time.time()
-
-dis_array1 = np.array(dis_array1)
-dis_array2 = np.array(dis_array2)
+        pi, mu, sigma = model_from_script(single_sample)
+    mu = mu * y_std + y_mean
+    prediction_array.append(mu)
+    real_array.append(y_last3_clean[sample_idx].tolist())
 
 
-dis_array = np.concatenate([dis_array1, dis_array2], axis=0)
-column_means = np.mean(dis_array, axis=0)
-column_means1 = np.mean(dis_array1, axis=0)
-column_means2 = np.mean(dis_array2, axis=0)
-print("列ごとの平均:", column_means.round(2))
-print("1列ごとの平均:", column_means1.round(2))
-print("2列ごとの平均:", column_means2.round(2))
-# myfunction.send_message_for_test(column_means.round(2))
+myfunction.print_val(prediction_array)
+myfunction.wirte_pkl(prediction_array, "result")
 
 
-myfunction.wirte_pkl(prediction_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\result")
-myfunction.wirte_pkl(real_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\real")
-print(end-start)
-if touch_vis:
-    make_touch_hist()
+# dis_array1 = np.array(dis_array1)
+# dis_array2 = np.array(dis_array2)
 
-if scaler_data:
-    make_scatter_plot_of_motor_and_error()
 
-if row_data_swith:
-    make_row_data_with_gosa(dis_array)
+# dis_array = np.concatenate([dis_array1, dis_array2], axis=0)
+# column_means = np.mean(dis_array, axis=0)
+# column_means1 = np.mean(dis_array1, axis=0)
+# column_means2 = np.mean(dis_array2, axis=0)
+# print("列ごとの平均:", column_means.round(2))
+# print("1列ごとの平均:", column_means1.round(2))
+# print("2列ごとの平均:", column_means2.round(2))
+# # myfunction.send_message_for_test(column_means.round(2))
+
+
+# # myfunction.wirte_pkl(prediction_array, "result")
+# myfunction.wirte_pkl(real_array, "real")
+# print(end-start)
+# if touch_vis:
+#     make_touch_hist()
+
+# if scaler_data:
+#     make_scatter_plot_of_motor_and_error()
+
+# if row_data_swith:
+#     make_row_data_with_gosa(dis_array)
