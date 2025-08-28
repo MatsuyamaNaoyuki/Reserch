@@ -1,12 +1,7 @@
 import numpy as np
 import torch
-from torch.utils.data import Dataset
-import pandas as pd
+import torch.nn.functional as F
 import torch.nn as nn
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-from diffusers import DDPMScheduler
-from diffusers.training_utils import EMAModel
 from diffusers.optimization import get_scheduler
 import math
 
@@ -456,3 +451,69 @@ class ResNetTransformer(nn.Module):
         out = self.head(out)  # (B, 12)
 
         return out
+
+
+
+class MDN2(nn.Module):
+    def __init__(self, hidden = 128):
+        super().__init__()
+        self.backbone = nn.Sequential(
+            nn.Linear(3, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, hidden),
+            nn.ReLU()
+        )
+        self.out_pi = nn.Linear(hidden, 2)
+        self.out_mu = nn.Linear(hidden, 2*3)
+        self.out_s = nn.Linear(hidden, 2*3)
+    
+    def forward(self, rotate_seq):
+        h = self.backbone(rotate_seq)
+        pi_logit = self.out_pi(h)
+        pi = torch.softmax(pi_logit, dim = -1)
+        mu = self.out_mu(h).view(-1, 2,3)
+        s = self.out_s(h).view(-1,2,3)
+        sigma = F.softplus(s) + 1e-3
+        return pi ,mu,sigma
+
+def mdn_nll(pi, mu, sigma, target):
+    B, K, _ =mu.shape
+    x = target.unsqueeze(1).expand(B,K,3)
+
+    comp_logprob = -0.5 * (((x - mu)/sigma)**2).sum(dim=-1) \
+                   - sigma.log().sum(dim=-1) \
+                   - 0.5*3*torch.log(torch.tensor(2*3.141592653589793, device=mu.device))
+    
+    logprob = torch.logsumexp(torch.log(pi + 1e-8) + comp_logprob, dim=1)
+    return(-logprob).mean()
+    
+
+class SelectorNet(nn.Module):
+    def __init__(self, in_dim = 15, hidden = 128, mode = "cls", use_pi_sigma = False):
+        super().__init__()
+        self.mode = mode
+        self.use_pi_sigma = use_pi_sigma
+        self.shared = nn.Sequential(
+            nn.Linear(in_dim, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, hidden),
+            nn.ReLU(),
+        )
+    
+        self.head_cls = nn.Linear(hidden, 2)
+
+
+        self.head_res1 = nn.Linear(hidden, 3)
+        self.head_res2 = nn.Linear(hidden, 3)
+
+
+    def forward(self, feats):
+        h = self.shared(feats)
+        logits = self.head_cls(h)
+        if self.mode == "cls+res":
+            d1 = self.head_res1(h)
+            d2 = self.head_res2(h)
+            return logits, {"d1":d1, "d2":d2}
+        else:
+            return logits, None
+    

@@ -206,7 +206,7 @@ def make_row_data_with_gosa(dis_array):
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
 modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\alluse_stride1\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortest.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
 motor_angle = True
 motor_force = True
 magsensor = True
@@ -252,6 +252,18 @@ fitA = scaler_data['fitA']
 alphaA = torch.ones_like(fitA.amp)
 xA_proc = Mydataset.apply_align_torch(x_data, fitA, alphaA)
 
+rot3_raw, force3_raw, m9_raw = torch.split(xA_proc, [3, 3, 9], dim=1)
+
+# ----- ここから「平均シフト（磁気だけ）」を追加 -----
+# このモデル(alluse_stride1)の学習時に保存した scaler を使う（すでに読み込んでいる x_mean/x_std）
+m9_train_mean = x_mean[6:15].unsqueeze(0)             # 学習時の磁気9ch平均（1,9）
+m9_session_mean = m9_raw.mean(dim=0, keepdim=True)    # 今回セッションの磁気9ch平均（1,9）
+
+# 差分だけ平行移動（回転/力には適用しない）
+m9_raw_shifted = m9_raw + (m9_train_mean - m9_session_mean)
+
+# 再結合
+x_raw_shifted = torch.cat([rot3_raw, force3_raw, m9_raw_shifted], dim=1)
 
 x_change = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
 y_change = Mydataset.apply_standardize_torch(y_data, y_mean, y_std)
@@ -283,9 +295,9 @@ print(f"seq_x の長さ: {len(seq_x)}")
 print(f"first_group_len: {first_group_len}")
 # print(dis_array)
 
-
+first_group_len = 3000
 start = time.time()
-for i in range(len(seq_x)):
+for i in range(6000):
     sample_idx = i  # 推論したいサンプルのインデックス
     single_sample = seq_x[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     with torch.no_grad():  # 勾配計算を無効化
@@ -315,7 +327,7 @@ print("2列ごとの平均:", column_means2.round(2))
 
 
 # myfunction.wirte_pkl(prediction_array, "result")
-myfunction.wirte_pkl(real_array, "real")
+# myfunction.wirte_pkl(real_array, "real")
 print(end-start)
 if touch_vis:
     make_touch_hist()

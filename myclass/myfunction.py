@@ -367,7 +367,7 @@ def get_type_change_end(type_vec):
     return idx
 
 
-def send_message():
+def send_message(message = None):
     load_dotenv(r"C:\Users\WRS\Desktop\Matsuyama\env\.env")
     TOKEN = os.getenv("DISCORD_TOKEN")  # .envや環境変数から取得
   
@@ -380,7 +380,10 @@ def send_message():
     async def on_ready():
         print(f"✅ ログインしました：{client.user}")
         user = await client.fetch_user(258533597848272896)
-        await user.send("🎉 プログラムが終了しました！")
+        if message == None:
+            await user.send("🎉 プログラムが終了しました！")
+        else:
+            await user.send(message)
         await client.close()
 
     client.run(TOKEN)
