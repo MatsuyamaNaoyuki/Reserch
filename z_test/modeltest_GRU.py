@@ -155,6 +155,9 @@ x_mean = torch.tensor(scaler_data['x_mean']).to(device)
 x_std = torch.tensor(scaler_data['x_std']).to(device)
 y_mean = torch.tensor(scaler_data['y_mean']).to(device)
 y_std = torch.tensor(scaler_data['y_std']).to(device)
+
+
+
 x_change = (x_data - x_mean) / x_std
 y_change = (y_data - y_mean) / y_std
 

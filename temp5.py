@@ -1,226 +1,126 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from torch.optim import lr_scheduler
-from torch.utils.data import DataLoader, Subset
-from myclass import myfunction
-from myclass import Mydataset
-from torch.utils.tensorboard import SummaryWriter
-import os 
-from tqdm import tqdm
+from myclass import myfunction, Mydataset
+import os
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-class MDN2(nn.Module):
-    def __init__(self, hidden = 128):
-        super().__init__()
-        self.backbone = nn.Sequential(
-            nn.Linear(3, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, hidden),
-            nn.ReLU()
-        )
-        self.out_pi = nn.Linear(hidden, 2)
-        self.out_mu = nn.Linear(hidden, 2*3)
-        self.out_s = nn.Linear(hidden, 2*3)
-    
-    def forward(self, rotate_seq):
-        h = self.backbone(rotate_seq)
-        pi_logit = self.out_pi(h)
-        pi = torch.softmax(pi_logit, dim = -1)
-        mu = self.out_mu(h).view(-1, 2,3)
-        s = self.out_s(h).view(-1,2,3)
-        sigma = F.softplus(s) + 1e-3
-        return pi ,mu,sigma
-    
+# =========================
+# 1) 教師(どっちが近いか)を作る
+# =========================
+@torch.no_grad()
+def teacher_label_std(mu_std, y_std):
+    # mu_std: (N,2,3) 標準化空間, y_std: (N,3)
+    d1 = torch.norm(mu_std[:,0,:] - y_std, dim=1)
+    d2 = torch.norm(mu_std[:,1,:] - y_std, dim=1)
+    label = (d2 < d1).long()        # 0: mu1が近い, 1: mu2が近い
+    margin = (d1 - d2).abs()        # どれくらい差がついたか
+    return label, margin, d1, d2
 
-#損失関数の定義
-def mdn_nll(pi, mu, sigma, target):
-    B, K, _ =mu.shape
-    x = target.unsqueeze(1).expand(B,K,3)
+# =========================
+# 2) 診断（学習時と同じ特徴で）
+# =========================
+@torch.no_grad()
+def quick_diagnose(mdnn, selector, t3_std, m9_std, y_std):
+    # mdnn: TorchScript MDN, selector: TorchScript SelectorNet
+    # t3_std: (N,3) 標準化済みの回転3ch
+    # m9_std: (N,9) 標準化済みの磁気9ch
+    # y_std : (N,3) 標準化済みの正解座標
+    pi, mu_std, sigma = mdnn(t3_std)                  # mu_std:(N,2,3)
 
-    comp_logprob = -0.5 * (((x - mu)/sigma)**2).sum(dim=-1) \
-                   - sigma.log().sum(dim=-1) \
-                   - 0.5*3*torch.log(torch.tensor(2*3.141592653589793, device=mu.device))
-    
-    logprob = torch.logsumexp(torch.log(pi + 1e-8) + comp_logprob, dim=1)
-    return(-logprob).mean()
-    
-def train(model, train_loader, optimizer, criterion):
-    model.train()
-    loss_mean = 0
+    # ====== 学習時と同じ特徴量の作り方 ======
+    feats = torch.cat([mu_std[:,0,:], mu_std[:,1,:], m9_std], dim=1)  # (N,15)
 
-    for rotate_batch, xyz_batch in train_loader:
-        rotate_batch = rotate_batch.to(device).float()
-        xyz_batch = xyz_batch.to(device).float()
-        pi, mu,sigma = model(rotate_batch)
-        loss = criterion(pi, mu, sigma, xyz_batch)
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
-        loss_mean += loss.item() * rotate_batch.size(0)
+    logits, _ = selector(feats)
+    pick = logits.argmax(dim=1)                      # (N,)
 
-    loss_mean = loss_mean / len(train_loader.dataset)
+    teacher, margin, d1, d2 = teacher_label_std(mu_std, y_std)
 
-    return loss_mean
+    # ① 教師ラベルの偏り
+    p1 = (teacher==1).float().mean().item()
+    # ② 教師に対する精度（= 本来のゴール）
+    acc = (pick==teacher).float().mean().item()
+    # ③ 自信の高い半分だけ（距離差marginの上位50%）での精度
+    thr = margin.median()
+    mask = margin > thr
+    acc_conf = (pick[mask]==teacher[mask]).float().mean().item() if mask.any() else float('nan')
+    # ④ 出力崩壊チェック（常に同じクラスを言ってないか）
+    frac_pick1 = (pick==1).float().mean().item()
+    # ⑤ ベースライン：常に多数派を言った時の精度（偏りの指標）
+    baseline = max(p1, 1.0-p1)
 
-def test(model, test_loader, criterion):
-    model.eval()
-    loss_mean = 0
+    print("=== Quick Diagnose (selector vs teacher) ===")
+    print(f"teacher P(label=1)            = {p1:.3f}")
+    print(f"baseline(always-majority)     = {baseline:.3f}")
+    print(f"selector acc vs teacher (all) = {acc:.3f}")
+    print(f"selector acc (confident half) = {acc_conf:.3f}")
+    print(f"selector picks class-1 ratio  = {frac_pick1:.3f}")
+    # 参考に数件だけ詳細を出す
+    for i in range(min(10, t3_std.shape[0])):
+        print(f"[{i:04d}] pick={int(pick[i].item())} teacher={int(teacher[i].item())} "
+              f"d1={d1[i].item():.3f} d2={d2[i].item():.3f} margin={margin[i].item():.3f}")
 
-    for rotate_batch, xyz_batch in test_loader:
-        rotate_batch = rotate_batch.to(device, non_blocking = True)
-        xyz_batch = xyz_batch.to(device, non_blocking = True)
+# =========================
+# 3) 前処理（学習時と完全一致）
+# =========================
+def load_std_data_for_diagnosis(data_path, selector_result_dir):
+    # Selector 学習時に保存した scaler を使う（重要！）
+    scaler_path = myfunction.find_pickle_files("scaler", selector_result_dir)
+    scaler = myfunction.load_pickle(scaler_path)
 
-        pi, mu, sigma = model(xyz_batch)
-        loss = criterion(pi, mu, sigma, xyz_batch)
+    x_mean = torch.tensor(scaler['x_mean'])
+    x_std  = torch.tensor(scaler['x_std'])
+    y_mean = torch.tensor(scaler['y_mean'])
+    y_std  = torch.tensor(scaler['y_std'])
+    fitA   = scaler['fitA']
 
-        loss_mean += loss.item() * rotate_batch.size(0)
-
-    loss_mean = loss_mean / len(test_loader.dataset)
-
-    return loss_mean
-
-
-
-def save_test(test_dataset, result_dir):
-    test_indices = test_dataset.indices  # 添え字のみ取得
-    test_indices_path = os.path.join(result_dir, "test_indices")
-    myfunction.wirte_pkl(test_indices, test_indices_path)
-
-def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, filepath):
-    checkpoint = {
-        'epoch': epoch,
-        'model_state_dict': model.state_dict(),
-        'optimizer_state_dict': optimizer.state_dict(),
-        'record_train_loss': record_train_loss,
-        'record_test_loss': record_test_loss,
-    }
-    torch.save(checkpoint, filepath)
-    print(f"Checkpoint saved at epoch {epoch}.")
-
-def main():
-    #-----------------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
-    resume_training = False   # 再開したい場合は True にする
-    #-----------------------------------------------------------------------------------------------------------------------
-
-    input_dim = 3
-    num_epochs = 500
-    batch_size = 128
-    r = 0.8
-    patience_stop = 30
-    patience_scheduler = 10
-
-    model = MDN2().to(device)
-    criterion = mdn_nll
-    optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
-    scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=patience_scheduler)
-
-    rotate_data, y_data, typedf = myfunction.read_pickle_to_torch(filename,motor_angle=True, motor_force=False, magsensor=False)
+    # 生データ読み込み（Selector 学習時と同じモードで）
+    x_data, y_data, typedf = myfunction.read_pickle_to_torch(
+        data_path, motor_angle=True, motor_force=True, magsensor=True
+    )
     y_last3 = y_data[:, -3:]
 
-
-    base_dir = os.path.dirname(result_dir)
-    kijun_dir = myfunction.find_pickle_files("kijun", base_dir)
-
-    kijunx, _ ,_= myfunction.read_pickle_to_torch(kijun_dir,motor_angle=True, motor_force=False, magsensor=False)
-    fitA = Mydataset.fit_calibration_torch(kijunx)
+    # 学習時と同じ整列→標準化
     alphaA = torch.ones_like(fitA.amp)
-    xA_proc = Mydataset.apply_align_torch(rotate_data, fitA, alphaA)
+    xA_proc   = Mydataset.apply_align_torch(x_data, fitA, alphaA)
+    std_x_all = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
+    std_y_all = Mydataset.apply_standardize_torch(y_last3, y_mean, y_std)
 
+    # NaN除去も学習時と同様に
+    mask = torch.isfinite(x_data).all(dim=1) & torch.isfinite(y_last3).all(dim=1)
+    std_x = std_x_all[mask]
+    std_y = std_y_all[mask]
 
-    x_mean, x_std = Mydataset.fit_standardizer_torch(xA_proc)
-    rotate_data = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
+    # 回転・力・磁気に分割（学習時と同じ 3,3,9）
+    t3_std, f3_std, m9_std = torch.split(std_x, [3,3,9], dim=1)
 
-    y_mean, y_std = Mydataset.fit_standardizer_torch(y_last3)
-    y_last3 = Mydataset.apply_standardize_torch(y_last3, y_mean, y_std)
+    # デバイスへ
+    return (t3_std.to(device).float(),
+            m9_std.to(device).float(),
+            std_y.to(device).float(),
+            y_mean.to(device).float(),
+            y_std.to(device).float())
 
+# =========================
+# 4) 実行ブロック（パスだけ直してください）
+# =========================
+if __name__ == "__main__":
+    # ---- パス設定 ----
+    MDNpath      = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2\model.pth"
+    selectorpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\select2\selector.pth"
+    selector_dir = os.path.dirname(selectorpath)
 
-    scaler_data = {
-        'x_mean': x_mean.cpu().numpy(),  # GPUからCPUへ移動してnumpy配列へ変換
-        'x_std': x_std.cpu().numpy(),
-        'y_mean': y_mean.cpu().numpy(),
-        'y_std': y_std.cpu().numpy(),
-        'fitA': fitA
-    }
+    # 診断したいデータ（学習に使ったもの or 評価したいファイル）
+    datapath     = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
+    # 例：テスト側を見るなら ↓ を使う
+    # datapath  = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle"
 
-    scaler_pass = os.path.join(result_dir, "scaler")
-    checkpoint_path = os.path.join(result_dir, "3d_checkpoint.pth")
+    # ---- モデル読み込み（TorchScript）----
+    mdn = torch.jit.load(MDNpath, map_location=device).eval()
+    selector = torch.jit.load(selectorpath, map_location=device).eval()
 
-    if resume_training and os.path.exists(checkpoint_path):
-        test_indices_path = myfunction.find_pickle_files("test_indices", result_dir)
-        test_indices = myfunction.load_pickle(test_indices_path)
-        all_indices = set(range(len(rotate_data)))
-        test_indices = set(test_indices)  # Set に変換（高速化）
-        train_indices = list(all_indices - test_indices)  # 差分を取る
-        train_dataset = Subset(rotate_data, train_indices)
-        test_dataset = Subset(rotate_data, list(test_indices))  
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,pin_memory=True, num_workers=0, persistent_workers=False)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=0, persistent_workers=False)
-        checkpoint = torch.load(checkpoint_path)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        start_epoch = checkpoint['epoch'] + 1
-        record_train_loss = checkpoint['record_train_loss']
-        record_test_loss = checkpoint['record_test_loss']
-        print(f"Resuming training from epoch {start_epoch}.")
-    else:
-        dataset = torch.utils.data.TensorDataset(rotate_data, y_last3)
+    # ---- 前処理（学習時と同一の scaler / align）----
+    t3_std, m9_std, y_std, y_mean, y_std_vec = load_std_data_for_diagnosis(datapath, selector_dir)
 
-        train_dataset, test_dataset = torch.utils.data.random_split(dataset, shuffle=True, pin_memory=True, num_workers=1, persistent_workers=True)
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=1, persistent_workers=True)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=1, persistent_workers=True)
-        myfunction.wirte_pkl(scaler_data, scaler_pass)
-        save_test(test_dataset,result_dir)
-        start_epoch = 0
-        record_train_loss = []
-        record_test_loss = []
-
-    log_dir = os.path.join(result_dir, "logs")
-    writer = SummaryWriter(log_dir=log_dir)
-
-    mintestloss = 99999999999
-    counter_step = 0
-    progress = tqdm(total=num_epochs, initial=start_epoch,desc="Epoch")
-
-    try:
-        for epoch in range(start_epoch, num_epochs):
-            train_loss = train(model, train_loader, optimizer, criterion)
-            test_loss = test(model, test_loader, criterion)
-            record_train_loss.append(train_loss)
-            record_test_loss.append(test_loss)
-
-            if mintestloss > test_loss:
-                counter_step = 0
-                filename = os.path.join(result_dir, "model")
-                myfunction.save_model(model, filename, time=False)
-                mintestloss = test_loss
-            else:
-                counter_step += 1
-                if counter_step >= patience_stop:
-                    print(f"Early stopping at epoch {epoch}")
-                    break
-
-
-            if epoch % 10 == 0:
-                tqdm.write(f"[{epoch}] train={train_loss:.5f} test={test_loss:.5f}")
-
-            writer.add_scalars("loss", {'train':train_loss, 'test':test_loss, 'lr':optimizer.param_groups[0]['lr']}, epoch)
-            progress.update(1)     
-
-    except KeyboardInterrupt:
-        print("終了します")
-        raise
-    finally:
-        save_checkpoint(epoch, model, optimizer, 
-                        record_train_loss, record_test_loss, checkpoint_path)
-        myfunction.wirte_pkl(record_test_loss, os.path.join(result_dir, "3d_testloss"))
-        myfunction.wirte_pkl(record_train_loss, os.path.join(result_dir, "3d_trainloss"))
-
-
-        progress.close()
-        myfunction.send_message()
-if __name__ == '__main__':
-    main()
+    # ---- 診断 ----
+    quick_diagnose(mdn, selector, t3_std, m9_std, y_std)

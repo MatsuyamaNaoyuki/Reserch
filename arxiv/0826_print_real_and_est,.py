@@ -2,8 +2,8 @@ import matplotlib.pyplot as plt
 from myclass import myfunction
 import pandas as pd
 
-y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortest.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\Reserch\result20250826_145751.pickle")
+y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle")
+estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\Reserch\result20250827_152904.pickle")
 
 
 
@@ -54,7 +54,7 @@ fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
 axes[0].scatter(t, x, label="contact X", s=1, c="blue", alpha=0.7)
 axes[0].scatter(t, ex, label="Estimated contact X", s=1, c="red", alpha=0.7)
 axes[0].scatter(t, nx, label="nocontact X", s=1, c="green", alpha=0.7)
-axes[0].scatter(t, enx, label="Estimated nocontact X", s=1, c="red", alpha=0.7)
+axes[0].scatter(t, enx, label="Estimated nocontact X", s=1, c="orange", alpha=0.7)
 
 axes[0].set_ylabel("X")
 axes[0].legend()
@@ -63,7 +63,7 @@ axes[0].legend()
 axes[1].scatter(t, y, label="contact y", s=1, c="blue", alpha=0.7)
 axes[1].scatter(t, ey, label="Estimated contact y", s=1, c="red", alpha=0.7)
 axes[1].scatter(t, ny, label="nocontact y", s=1, c="green", alpha=0.7)
-axes[1].scatter(t, eny, label="Estimated nocontact y", s=1, c="red", alpha=0.7)
+axes[1].scatter(t, eny, label="Estimated nocontact y", s=1, c="orange", alpha=0.7)
 axes[1].set_ylabel("Y")
 axes[1].legend()
 
@@ -71,7 +71,7 @@ axes[1].legend()
 axes[2].scatter(t, z, label="contact z", s=1, c="blue", alpha=0.7)
 axes[2].scatter(t, ez, label="Estimated contact z", s=1, c="red", alpha=0.7)
 axes[2].scatter(t, nz, label="nocontact z", s=1, c="green", alpha=0.7)
-axes[2].scatter(t, enz, label="Estimated nocontact z", s=1, c="red", alpha=0.7)
+axes[2].scatter(t, enz, label="Estimated nocontact z", s=1, c="orange", alpha=0.7)
 # axes[2].set_ylabel("Z")
 axes[2].set_xlabel("Time step")
 axes[2].legend()
