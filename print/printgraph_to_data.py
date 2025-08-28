@@ -4,8 +4,10 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
 # ===== 設定 =====
-PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle"
-# KEYS = ["rotate"] 
+PATH = r"C:\Users\shigf\Program\Reserch\0818_tubefinger_kijun_rere20250820_173021.pickle"
+# KEYS = ["rotate", "force"] 
+PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\0818_tubefinger_kijun_rere20250820_173021.pickle"
+KEYS = ["rotate"] 
 # KEYS = ["sensor"] 
 KEYS = ["Mc5"] 
 WINDOW = 5000          # 1画面で表示する点数
