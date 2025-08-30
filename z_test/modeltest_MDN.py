@@ -221,7 +221,7 @@ input_dim = 3
 pickle = detect_file_type(filename)
 basepath = Path(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult")
 
-rotate_data, y_data, typedf= myfunction.read_pickle_to_torch(filename, True, False, False)
+rotate_data, y_data, typedf= myfunction.read_pickle_to_torch(filename, True, True, True)
 y_last3 = y_data[:, -3:]
 
 
@@ -246,7 +246,7 @@ mask = torch.isfinite(x_change).all(dim=1) & torch.isfinite(y_last3).all(dim=1)
 rotate_data_clean = x_change[mask]
 y_last3_clean     = y_last3[mask]
 
-
+rotate_data_clean ,force3_raw, m9_raw = torch.split(rotate_data_clean, [3,3,9], dim=1)
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
 model_from_script.eval()
@@ -276,7 +276,9 @@ for i in range(len(rotate_data_clean)):
 
 
 myfunction.print_val(prediction_array)
-myfunction.wirte_pkl(prediction_array, "result")
+parent = os.path.dirname(modelpath)
+resultpath = os.path.join(parent, "result") 
+myfunction.wirte_pkl(prediction_array, resultpath)
 
 
 # dis_array1 = np.array(dis_array1)

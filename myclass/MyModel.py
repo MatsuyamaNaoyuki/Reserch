@@ -517,3 +517,58 @@ class SelectorNet(nn.Module):
         else:
             return logits, None
     
+class SelectorGRU(nn.Module):
+    def __init__(self, mag_dim = 9, hidden = 64, num_layers = 1, fc_dim = 64, p_drop=0.2):
+        super().__init__()
+        self.gru = nn.GRU(input_size= mag_dim, hidden_size=hidden, num_layers= num_layers,
+                          batch_first=True, bidirectional=False)
+        
+        self.selector = nn.Sequential(
+            nn.Linear(hidden + 6, fc_dim),
+            nn.ReLU(inplace = True),
+            nn.Dropout(p_drop),
+            nn.Linear(fc_dim, 2)
+        )
+    
+    def forward(self, mag_seq, mu_pair):
+        out, h = self.gru(mag_seq)
+        h_last = h[-1]
+        x = torch.cat([h_last, mu_pair],dim=1)
+        logits = self.selector(x)
+        return logits
+    
+class SelectorGRUdelta(nn.Module):
+    def __init__(self, mag_dim=9, hidden=64, num_layers=1, fc_dim=64, p_drop=0.2, res_limit=3.0):
+        super().__init__()
+        self.gru = nn.GRU(input_size= mag_dim, hidden_size=hidden, num_layers= num_layers,
+                          batch_first=True, bidirectional=False)
+        
+        self.selector = nn.Sequential(
+            nn.Linear(hidden + 6, fc_dim),
+            nn.ReLU(inplace = True),
+            nn.Dropout(p_drop),
+            nn.Linear(fc_dim, 2)
+        )
+    
+        self.residual = nn.Sequential(
+            nn.Linear(hidden + 6, fc_dim),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p_drop),
+            nn.Linear(fc_dim, 6)
+        )
+
+        nn.init.zeros_(self.residual[-1].weight)
+        nn.init.zeros_(self.residual[-1].bias)
+
+        self.res_limit = res_limit
+
+    def forward(self, mag_seq, mu_pair):
+        _, h = self.gru(mag_seq)
+        h_last = h[-1]
+        x = torch.cat([h_last, mu_pair],dim=1)
+        logits = self.selector(x)
+
+        d_all = torch.tanh(self.residual(x)) * self.res_limit
+        d_n, d_c = d_all[:, :3], d_all[:, 3:]
+        return logits, d_n, d_c
+

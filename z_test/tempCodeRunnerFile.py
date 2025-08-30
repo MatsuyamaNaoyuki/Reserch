@@ -1,2 +1,2 @@
-myfunction.print_val(prediction_array)
-myfunction.wirte_pkl(prediction_array, "result")
+
+m9_session_mean = m9_raw.mean(dim = 0

@@ -254,12 +254,10 @@ xA_proc = Mydataset.apply_align_torch(x_data, fitA, alphaA)
 
 rot3_raw, force3_raw, m9_raw = torch.split(xA_proc, [3, 3, 9], dim=1)
 
-# ----- ここから「平均シフト（磁気だけ）」を追加 -----
-# このモデル(alluse_stride1)の学習時に保存した scaler を使う（すでに読み込んでいる x_mean/x_std）
+
 m9_train_mean = x_mean[6:15].unsqueeze(0)             # 学習時の磁気9ch平均（1,9）
 m9_session_mean = m9_raw.mean(dim=0, keepdim=True)    # 今回セッションの磁気9ch平均（1,9）
 
-# 差分だけ平行移動（回転/力には適用しない）
 m9_raw_shifted = m9_raw + (m9_train_mean - m9_session_mean)
 
 # 再結合

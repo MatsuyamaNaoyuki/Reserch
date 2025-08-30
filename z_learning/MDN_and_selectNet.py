@@ -133,12 +133,12 @@ def build_selector_batch(mdnn, std_rotate_data, std_mag_data, std_y_data):
 
 def main():
     #-----------------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDNandselector"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDN_selector"
+    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
 
     #-----------------------------------------------------------------------------------------------------------------------
 
-    num_epochs = 2
+    num_epochs = 500
     batch_size = 128
     r = 0.8
     patience_stop = 30
