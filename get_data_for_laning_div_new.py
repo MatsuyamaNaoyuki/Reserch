@@ -106,7 +106,6 @@ def move(Motors, howtomovepath):
     print(change_angle)
     time_len = None
     # time_len = [4,4,10,10,7,7, 5,5, 9,9]
-    time.sleep(5)
     for i, angles in enumerate(change_angle):
         print(angles)
         print(str(i) + "/" +  str(len_angle))
@@ -186,7 +185,7 @@ def get_motioncapture(Ms, mcpath):
 
 # result_dir = r"0520\nohit1500kai"
 
-base_path = r"C:\Users\shigf\Program\data\0818_tubefinger_rere\kijunn"
+base_path = r"C:\Users\shigf\Program\data\0818_tubefinger_rere\hit10kai"
 
 # ----------------------------------------------------------------------------------------
 

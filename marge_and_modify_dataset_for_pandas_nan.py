@@ -230,7 +230,7 @@ for col in df.columns:
 # df.loc[manual_mask, :] = np.nan
 
 
-filename = "0818_tubefinger_kijun_rere"
+filename = "0818_tubefinger_hit_10kai_rerere"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'
