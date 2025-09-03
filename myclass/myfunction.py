@@ -240,13 +240,15 @@ def read_csv_to_torch(filename, motor_angle, motor_force, magsensor):
 
 
 
-def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor):
+def read_pickle_to_torch(filename, motor_angle, motor_force, magsensor, nosentor = False):
     pickle_file_path = filename
     df = pd.read_pickle(pickle_file_path)
     columns = df.columns.tolist()
     motor_angle_columns = [col for col in columns if "rotate" in col]
     motor_force_columns = [col for col in columns if "force" in col]
     motor_magsensor_columns = [col for col in columns if "sensor" in col]
+    if nosentor:
+        motor_magsensor_columns = ["sensor1","sensor3","sensor4","sensor6","sensor7","sensor9"]
     #説明変数と目的変数に分離
 
     input_col = []

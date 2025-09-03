@@ -1,136 +1,221 @@
-import matplotlib.pyplot as plt
+import time
+#resnetを実装したもの
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision.models import resnet18
+from torch.utils.data import DataLoader
 from myclass import myfunction
-import pandas as pd
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+import matplotlib.pyplot as plt
+import random
 import numpy as np
+import pandas as pd
+import os, sys
+import japanize_matplotlib
+from pathlib import Path
 
 
 
 
 
-def culc_gosa(y_data, estimation_array):
-    gosa = 0
 
-    for i in range(len(y_data)):
-        distance = np.linalg.norm(np.array(y_data[i])- np.array(estimation_array[i]))
-        gosa = gosa + distance
-    
-    gosa = gosa / len(y_data)
-    myfunction.print_val(gosa)
-
-def culc_currect(y_data, estimation_array):
-    half = len(y_data) // 2
-    contact_y_data = y_data[:half]
-    no_contact_y_data = y_data[half:]
-    contact_y_data = contact_y_data + contact_y_data
-    no_contact_y_data = no_contact_y_data + no_contact_y_data
-    minlen = min(len(contact_y_data), len(no_contact_y_data), len(estimation_array))
-    currect = 0
-    for i in range(minlen):
-        dis1 = np.linalg.norm(np.array(contact_y_data[i])- np.array(estimation_array[i]))
-        dis2 = np.linalg.norm(np.array(no_contact_y_data[i])- np.array(estimation_array[i]))
-        if i < half:
-            if dis1 < dis2:
-                currect = currect + 1
-        else:
-            if dis2 < dis1:
-                currect = currect +1
-    
-    currect = currect / minlen
-    myfunction.print_val(currect)
-    
-
-y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\Reserch\result20250829_153340.pickle")
-
-no_contact_real = True
-contact_real = True
-no_contact_est = True
-contact_est = True
-
-
-list_estimation_array = [t.cpu().tolist()[0] for t in estimation_array]
-myfunction.print_val(list_estimation_array)
-list1 = [row[0] for row in list_estimation_array]  # shape: (6871, 3)
-list2 = [row[1] for row in list_estimation_array]
-# list_y_data = y_data[["Mc5x", "Mc5y", "Mc5z"]].values.tolist()
-
-# culc_gosa(list_y_data, list_estimation_array)
-# culc_currect(list_y_data, list_estimation_array)
+def culc_gosa(prediction, ydata):
+    dis_array = np.zeros(4)
+    # print(ydata)
+    for i in range(4):
+        pointpred =np.array([prediction[i * 3],prediction[i * 3 + 1],prediction[i * 3 + 2]])
+        pointydata = np.array([ydata[3 * i], ydata[3 * i + 1], ydata[3 * i + 2]])
+        distance = np.linalg.norm(pointpred - pointydata)
+        dis_array[i] = distance
+    return dis_array
 
 
 
-myfunction.print_val(list2)
+def make_sequence_tensor_stride(x, y, typedf, L, stride):
+    typedf = typedf.tolist()
+    typedf.insert(0, 0)
+    total_span = (L - 1) * stride
 
-half = len(y_data) // 2
+    seq_x, seq_y = [], []
 
-lx  = y_data['Mc5x'].to_list()
-x = lx[half::1]
-ly  = y_data['Mc5y'].to_list()
-y = ly[half::1]
-lz  = y_data['Mc5z'].to_list()
-z = lz[half::1]
+    nan_mask = torch.isnan(x).any(dim=1)
+    nan_rows = nan_mask.nonzero(as_tuple=True)[0].tolist()
 
-ex = [row[0]  for row in list1]
-ey = [row[1] for row in list1]
-ez = [row[2] for row in list1]
+    nan_rows_set = set(nan_rows)  # 高速化のため set にしておく
+    first_group_len = None  # ← 追加：最初のグループの shape[0] を格納
 
-nx  = lx[:half:1]
-ny  = ly[:half:1]
-nz  = lz[:half:1]
+    jslist = []
 
-enx = [row[0]  for row in list2]
-eny = [row[1] for row in list2]
-enz = [row[2] for row in list2]
+    for i in range(len(typedf) - 1):
+        start = typedf[i] + total_span
+        end = typedf[i + 1]
+        if end <= start:
+            continue
 
-min_len = min(len(x), len(nx), len(ex), len(enx))
-x, y, z = x[:min_len], y[:min_len], z[:min_len]
-ex, ey, ez = ex[:min_len], ey[:min_len], ez[:min_len]
-nx, ny, nz = nx[:min_len], ny[:min_len], nz[:min_len]
-enx, eny, enz = enx[:min_len], eny[:min_len], enz[:min_len]
+        js = torch.arange(start, end, device=x.device)
+        relative_indices = torch.arange(L-1, -1, -1, device=x.device) * stride
+        indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
+
+       # --- ここで NaN 系列を除外する ---
+        # indices を CPU に移動して numpy に変換
+        indices_np = indices.cpu().numpy()
+        # nan_rows が含まれているか判定
+        valid_mask = []
+        for row in indices_np:
+            if any(idx in nan_rows_set for idx in row):
+                valid_mask.append(False)  # nan を含む → 無効
+            else:
+                valid_mask.append(True)   # nan を含まない → 有効
+
+        valid_mask = torch.tensor(valid_mask, device=x.device)
+
+        # 有効な indices だけ残す
+        indices = indices[valid_mask]
+        js = js[valid_mask]
+
+        if indices.shape[0] == 0:
+            continue  # 有効な系列がなければスキップ
+        # 最初のグループだけ取得
+        if first_group_len is None:
+            first_group_len = indices.shape[0]
+
+        x_seq = x[indices]
+        y_seq = y[js]
+
+        seq_x.append(x_seq)
+        seq_y.append(y_seq)
+        jslist.append(js)
+
+    seq_x = torch.cat(seq_x, dim=0)
+    seq_y = torch.cat(seq_y, dim=0)
+    jslist = torch.cat(jslist, dim = 0)
+    return seq_x, seq_y, first_group_len ,jslist # ← 追加：最初のグループ長も返す
 
 
-# 時系列インデックス
-t = range(len(x))
+
+#変える部分-----------------------------------------------------------------------------------------------------------------
+
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\GRUseikika\model.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle"
+basefilepath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
+motor_angle = True
+motor_force = True
+magsensor = True
+L = 32
+stride = 1
+
+touch_vis = True
+scatter_motor = True
+row_data_swith = True
+#-----------------------------------------------------------------------------------------------------------------
+
+input_dim = 3 * motor_angle + 3 * motor_force + 9 * magsensor
+output_dim = 12
 
 
 
-print(len(z))
-print(len(nx))
-
-fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
-
-# X
-
-if contact_real:
-    axes[0].scatter(t, x, label="contact X", s=1, c="blue", alpha=0.7)  
-    axes[1].scatter(t, y, label="contact y", s=1, c="blue", alpha=0.7)
-    axes[2].scatter(t, z, label="contact z", s=1, c="blue", alpha=0.7)
-
-if contact_est:
-    axes[0].scatter(t, ex, label="Estimated contact X", s=1, c="red", alpha=0.7)
-    axes[1].scatter(t, ey, label="Estimated contact y", s=1, c="red", alpha=0.7)
-    axes[2].scatter(t, ez, label="Estimated contact z", s=1, c="red", alpha=0.7)
 
 
-if no_contact_real:
-    axes[0].scatter(t, nx, label="nocontact X", s=1, c="green", alpha=0.7)
-    axes[1].scatter(t, ny, label="nocontact y", s=1, c="green", alpha=0.7)
-    axes[2].scatter(t, nz, label="nocontact z", s=1, c="green", alpha=0.7)
+basepath = Path(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult")
 
-if no_contact_est:
-    axes[0].scatter(t, enx, label="Estimated nocontact X", s=1, c="orange", alpha=0.7)
-    axes[1].scatter(t, eny, label="Estimated nocontact y", s=1, c="orange", alpha=0.7)
-    axes[2].scatter(t, enz, label="Estimated nocontact z", s=1, c="orange", alpha=0.7)
 
-axes[0].set_ylabel("X")
-axes[0].legend()
 
-axes[1].set_ylabel("Y")
-axes[1].legend()
+x_data,y_data , typedf= myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
+base_x_data ,base_y_data, _ = myfunction.read_pickle_to_torch(basefilepath, motor_angle, motor_force, magsensor)
 
-axes[2].set_ylabel("Z")
-axes[2].set_xlabel("Time step")
-axes[2].legend()
 
-plt.tight_layout()
-plt.show()
+
+
+
+
+base_x_data_mean = base_x_data.nanmean(dim=0)
+# x_data_mean = x_data.nanmean(dim=0)
+
+
+x_data = x_data - x_data[0] + base_x_data[0]
+
+x_data = x_data.to(device)
+y_data = y_data.to(device)
+
+resultdir = os.path.dirname(modelpath)
+scaler_path = myfunction.find_pickle_files("scaler", resultdir)
+scaler_data = myfunction.load_pickle(scaler_path)
+x_min = torch.tensor(scaler_data['x_min']).to(device)
+x_max = torch.tensor(scaler_data['x_max']).to(device)
+y_min = torch.tensor(scaler_data['y_min']).to(device)
+y_max = torch.tensor(scaler_data['y_max']).to(device)
+x_scale = (x_max - x_min).clamp(min=1e-8)
+y_scale = (y_max - y_min).clamp(min=1e-8)
+
+x_change = (x_data - x_min) / x_scale
+y_change = (y_data - y_min) / y_scale
+
+
+
+
+
+type_end_list = myfunction.get_type_change_end(typedf)
+
+
+seq_x, seq_y, first_group_len, js= make_sequence_tensor_stride(x_change, y_data,type_end_list, L=L, stride=stride)
+
+
+
+
+# モデルのロード
+
+model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
+model_from_script.eval()
+
+
+
+# x_data から 1 サンプルを取得（例: 0番目のサンプル）
+dis_array1 = []
+dis_array2 = []
+prediction_array = []
+real_array = []
+print(f"seq_x の長さ: {len(seq_x)}")
+print(f"first_group_len: {first_group_len}")
+# print(dis_array)
+
+
+start = time.time()
+for i in range(len(seq_x)):
+# for i in range(6000):
+    sample_idx = i  # 推論したいサンプルのインデックス
+    single_sample = seq_x[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
+    with torch.no_grad():  # 勾配計算を無効化
+        prediction = model_from_script(single_sample)
+    prediction = prediction * y_scale + y_min
+    prediction_array.append(prediction)
+    real_array.append(seq_y[sample_idx].tolist())
+    distance = culc_gosa(prediction.tolist()[0], seq_y[sample_idx].tolist())
+    if i < first_group_len:
+        dis_array1.append(distance)
+    else:
+        dis_array2.append(distance)
+end = time.time()
+
+dis_array1 = np.array(dis_array1)
+dis_array2 = np.array(dis_array2)
+
+
+# dis_array = np.concatenate([dis_array1, dis_array2], axis=0)
+# column_means = np.mean(dis_array, axis=0)
+# column_means1 = np.mean(dis_array1, axis=0)
+# column_means2 = np.mean(dis_array2, axis=0)
+# print("列ごとの平均:", column_means.round(2))
+# print("1列ごとの平均:", column_means1.round(2))
+# print("2列ごとの平均:", column_means2.round(2))
+# myfunction.send_message_for_test(column_means.round(2))
+
+parent = os.path.dirname(modelpath)
+resultpath = os.path.join(parent, "result") 
+myfunction.wirte_pkl(prediction_array, resultpath)
+js_path = os.path.join(parent, "js") 
+myfunction.wirte_pkl(js, js_path)
+
+# myfunction.wirte_pkl(prediction_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\result")
+# myfunction.wirte_pkl(real_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\real")
+print(end-start)

@@ -206,7 +206,7 @@ def make_row_data_with_gosa(dis_array):
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
 modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\alluse_stride1\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortest.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortest (1).pickle"
 motor_angle = True
 motor_force = True
 magsensor = True

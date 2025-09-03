@@ -538,7 +538,7 @@ class SelectorGRU(nn.Module):
         return logits
     
 class SelectorGRUdelta(nn.Module):
-    def __init__(self, mag_dim=9, hidden=64, num_layers=1, fc_dim=64, p_drop=0.2, res_limit=3.0):
+    def __init__(self, mag_dim=9, hidden=64, num_layers=1, fc_dim=64, p_drop=0.2, res_limit=5.0):
         super().__init__()
         self.gru = nn.GRU(input_size= mag_dim, hidden_size=hidden, num_layers= num_layers,
                           batch_first=True, bidirectional=False)

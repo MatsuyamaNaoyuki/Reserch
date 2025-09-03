@@ -40,13 +40,15 @@ def culc_currect(y_data, estimation_array):
     myfunction.print_val(currect)
     
 
-y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selectGRU\result20250830_170256.pickle")
+y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle")
+estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\GRU_noforce\result20250902_144114.pickle")
+estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\select2\result20250829_152315.pickle")
 
+myfunction.print_val(estimation_array)
 no_contact_real = True
-contact_real = True
+contact_real = False
 no_contact_est = True
-contact_est = True
+contact_est = False
 
 
 list_estimation_array = [t.cpu().tolist() for t in estimation_array]
@@ -103,26 +105,25 @@ fig, axes = plt.subplots(3, 1, figsize=(10, 8), sharex=True)
 # X
 
 if contact_real:
-    axes[0].scatter(t, x, label="contact X", s=1, c="blue", alpha=0.7)  
-    axes[1].scatter(t, y, label="contact y", s=1, c="blue", alpha=0.7)
-    axes[2].scatter(t, z, label="contact z", s=1, c="blue", alpha=0.7)
+    axes[0].scatter(t, nx, label="contact X", s=1, c="blue", alpha=0.7)  
+    axes[1].scatter(t, ny, label="contact y", s=1, c="blue", alpha=0.7)
+    axes[2].scatter(t, nz, label="contact z", s=1, c="blue", alpha=0.7)
 
 if contact_est:
-    axes[0].scatter(t, ex, label="Estimated contact X", s=1, c="red", alpha=0.7)
-    axes[1].scatter(t, ey, label="Estimated contact y", s=1, c="red", alpha=0.7)
-    axes[2].scatter(t, ez, label="Estimated contact z", s=1, c="red", alpha=0.7)
+    axes[0].scatter(t, enx, label="Estimated contact X", s=1, c="red", alpha=0.7)
+    axes[1].scatter(t, eny, label="Estimated contact y", s=1, c="red", alpha=0.7)
+    axes[2].scatter(t, enz, label="Estimated contact z", s=1, c="red", alpha=0.7)
 
 
 if no_contact_real:
-    axes[0].scatter(t, nx, label="nocontact X", s=1, c="green", alpha=0.7)
-    axes[1].scatter(t, ny, label="nocontact y", s=1, c="green", alpha=0.7)
-    axes[2].scatter(t, nz, label="nocontact z", s=1, c="green", alpha=0.7)
+    axes[0].scatter(t, x, label="nocontact X", s=1, c="green", alpha=0.7)
+    axes[1].scatter(t, y, label="nocontact y", s=1, c="green", alpha=0.7)
+    axes[2].scatter(t, z, label="nocontact z", s=1, c="green", alpha=0.7)
 
 if no_contact_est:
-    axes[0].scatter(t, enx, label="Estimated nocontact X", s=1, c="orange", alpha=0.7)
-    axes[1].scatter(t, eny, label="Estimated nocontact y", s=1, c="orange", alpha=0.7)
-    axes[2].scatter(t, enz, label="Estimated nocontact z", s=1, c="orange", alpha=0.7)
-
+    axes[0].scatter(t, ex, label="Estimated nocontact X", s=1, c="orange", alpha=0.7)
+    axes[1].scatter(t, ey, label="Estimated nocontact y", s=1, c="orange", alpha=0.7)
+    axes[2].scatter(t, ez, label="Estimated nocontact z", s=1, c="orange", alpha=0.7)
 axes[0].set_ylabel("X")
 axes[0].legend()
 

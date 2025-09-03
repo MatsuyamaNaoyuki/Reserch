@@ -4,12 +4,12 @@ import matplotlib.pyplot as plt
 from matplotlib.widgets import Slider
 
 # ===== 設定 =====
-PATH = r"C:\Users\shigf\Program\Reserch\0818_tubefinger_kijun_rere20250820_173021.pickle"
+
 # KEYS = ["rotate", "force"] 
-PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\0818_tubefinger_kijun_rere20250820_173021.pickle"
-KEYS = ["rotate"] 
-# KEYS = ["sensor"] 
-KEYS = ["Mc5"] 
+PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
+# KEYS = ["rotate"] 
+KEYS = ["sensor1","sensor2","sensor3"] 
+# KEYS = ["Mc5"] 
 WINDOW = 5000          # 1画面で表示する点数
 STEP   = 5000           # ←→・ホイールで動くステップ幅（点）
 # =================
@@ -45,7 +45,7 @@ df_std = (df[COLUMNS_TO_PLOT] - mu) / sigma
 df_std = df_std.fillna(0)                      # ゼロ割や全NaN区間は0で埋める
 
 # 以降、描画はこの SRC を参照（元dfは変更しない）
-SRC = df_std
+SRC = df
 
 
 # ウィンドウ長の調整

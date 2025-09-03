@@ -84,61 +84,64 @@ m9_session_mean = m9_raw.mean(dim = 0, keepdim=True).to(device)
 sel_m9_mean = sel_x_mean[6:15].unsqueeze(0)
 m9_raw_shifted = m9_raw.to(device) + (sel_m9_mean - m9_session_mean)
 
-m9_std_sel = (m9_raw_shifted - sel_m9_mean) / sel_x_std[6:15].unsqueeze(0)  # (N,9)
+
+myfunction.print_val(m9_session_mean)
+myfunction.print_val(sel_m9_mean)
+# m9_std_sel = (m9_raw_shifted - sel_m9_mean) / sel_x_std[6:15].unsqueeze(0)  # (N,9)
 
 
 
 
-model_MDN = torch.jit.load(MDNpath, map_location="cuda:0")
-model_MDN.eval()
-model_select = torch.jit.load(selectorpath, map_location="cuda:0")
-model_select.eval()
+# model_MDN = torch.jit.load(MDNpath, map_location="cuda:0")
+# model_MDN.eval()
+# model_select = torch.jit.load(selectorpath, map_location="cuda:0")
+# model_select.eval()
 
 
 
-prediction_array = []
+# prediction_array = []
 
 
-correct = 0
+# correct = 0
 
 
-with torch.no_grad():
-    for i in range(t3_std_mdn.size(0)):
-    # for i in range(800000, 810000):
-        t3 = t3_std_mdn[i:i+1]
-        m9i = m9_std_sel[i:i+1]
-        pi, mu_std_mdn, sigma = model_MDN(t3)
-        mu_world = mu_std_mdn * mdn_y_std + mdn_y_mean
-        mu_std_sel = (mu_world - sel_y_mean) / sel_y_std
-        feats = torch.cat([mu_std_sel[:,0,:], mu_std_sel[:,1,:], m9i], dim=1)  # (1,15)
-        logits, _ = model_select(feats)      # (1,2)
-        pred_idx = logits.argmax(dim=1).item()
-        un_pred_idx = get_uncrrect_num(pred_idx)
-        # 選ばれたμは“実スケール”で返す（可視化や保存はこちらが正しい）
-        pred_world = mu_world[0, pred_idx, :]            # (3,)
-        unpred_world = mu_world[0, un_pred_idx, :]
+# with torch.no_grad():
+#     for i in range(t3_std_mdn.size(0)):
+#     # for i in range(800000, 810000):
+#         t3 = t3_std_mdn[i:i+1]
+#         m9i = m9_std_sel[i:i+1]
+#         pi, mu_std_mdn, sigma = model_MDN(t3)
+#         mu_world = mu_std_mdn * mdn_y_std + mdn_y_mean
+#         mu_std_sel = (mu_world - sel_y_mean) / sel_y_std
+#         feats = torch.cat([mu_std_sel[:,0,:], mu_std_sel[:,1,:], m9i], dim=1)  # (1,15)
+#         logits, _ = model_select(feats)      # (1,2)
+#         pred_idx = logits.argmax(dim=1).item()
+#         un_pred_idx = get_uncrrect_num(pred_idx)
+#         # 選ばれたμは“実スケール”で返す（可視化や保存はこちらが正しい）
+#         pred_world = mu_world[0, pred_idx, :]            # (3,)
+#         unpred_world = mu_world[0, un_pred_idx, :]
 
-        d_pred = torch.linalg.norm(pred_world - y_last3[i])
-        d_unpred = torch.linalg.norm(unpred_world - y_last3[i])
+#         d_pred = torch.linalg.norm(pred_world - y_last3[i])
+#         d_unpred = torch.linalg.norm(unpred_world - y_last3[i])
 
-        if d_pred.item() < d_unpred.item():
-            correct = correct +1
-
-
-
-        prediction_array.append(pred_world.detach().cpu())
-
-correct = correct / 10000
+#         if d_pred.item() < d_unpred.item():
+#             correct = correct +1
 
 
 
+#         prediction_array.append(pred_world.detach().cpu())
+
+# correct = correct / 10000
 
 
 
-# myfunction.print_val(prediction_array)
-myfunction.print_val(correct)
 
-parent = os.path.dirname(selectorpath)
-resultpath = os.path.join(parent, "result") 
-myfunction.wirte_pkl(prediction_array, resultpath)
+
+
+# # myfunction.print_val(prediction_array)
+# myfunction.print_val(correct)
+
+# parent = os.path.dirname(selectorpath)
+# resultpath = os.path.join(parent, "result") 
+# myfunction.wirte_pkl(prediction_array, resultpath)
 
