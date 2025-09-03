@@ -8,36 +8,41 @@ from myclass import Mydataset
 from torch.utils.tensorboard import SummaryWriter
 import os 
 from tqdm import tqdm
+from myclass import MyModel
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-class SelectorNet(nn.Module):
-    def __init__(self, in_dim = 15, hidden = 128, mode = "cls", use_pi_sigma = False):
-        super().__init__()
-        self.mode = mode
-        self.use_pi_sigma = use_pi_sigma
-        self.shared = nn.Sequential(
-            nn.Linear(in_dim, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, hidden),
-            nn.ReLU(),
-        )
-    
-        self.head_cls = nn.Linear(hidden, 2)
 
 
-        self.head_res1 = nn.Linear(hidden, 3)
-        self.head_res2 = nn.Linear(hidden, 3)
+@torch.no_grad()
+def make_teacher_and_feats(mdnn, rot3_std_mdn, mag9_std):
+    # mdnn: 回転3軸(標準化) -> (pi, mu, sigma)
+    pi, mu_std, sigma = mdnn(rot3_std_mdn)          # mu_std: [N, 2, 3]
+    # 教師（どっちの mu が GT に近いか）を作るには、別で y_std_mdn が必要
+    return pi, mu_std, sigma
+
+@torch.no_grad()
+def teacher_label_and_margin(mu_std, y_std):
+    # mu_std: [N, 2, 3], y_std: [N, 3]
+    d1 = torch.norm(mu_std[:,0,:] - y_std, dim=1)
+    d2 = torch.norm(mu_std[:,1,:] - y_std, dim=1)
+    teacher = (d2 < d1).long()            # 0 は mu1, 1 は mu2
+    margin  = (d1 - d2).abs()             # 近さの差分（自信度 proxy）
+    return teacher, margin, d1, d2
+
+def make_margin_weights(margin, low_q = 0.2, high_q = 0.8):
+    lo = torch.quantile(margin, low_q)
+    hi = torch.quantile(margin, high_q)
+    w = (margin - lo) / (hi - lo + 1e-8)
+    w = torch.clamp(w, 0.0, 1.0)
+    return w, lo, hi
 
 
-    def forward(self, feats):
-        h = self.shared(feats)
-        logits = self.head_cls(h)
-        if self.mode == "cls+res":
-            d1 = self.head_res1(h)
-            d2 = self.head_res2(h)
-            return logits, {"d1":d1, "d2":d2}
-        else:
-            return logits, None
-    
+def get_class_weight(teacher):
+    # 出現頻度の逆数（簡易）
+    num0 = (teacher==0).sum().float()
+    num1 = (teacher==1).sum().float()
+    w0 = (num0 + num1) / (2.0 * num0 + 1e-8)
+    w1 = (num0 + num1) / (2.0 * num1 + 1e-8)
+    return torch.tensor([w0, w1], device=teacher.device)
 
 
 
@@ -49,6 +54,7 @@ def build_selector_batch(mdnn, std_rotate_data, std_mag_data, std_y_data):
     d1 = torch.norm(mu[:, 0, :] - std_y_data, dim=1)
     d2 = torch.norm(mu[:, 1, :] - std_y_data, dim=1)
     label = (d2 < d1).long()
+    
 
 
     feats = [mu[:, 0, :], mu[:, 1, :], std_mag_data]
@@ -56,18 +62,23 @@ def build_selector_batch(mdnn, std_rotate_data, std_mag_data, std_y_data):
 
     return feats, label
   
-def train(selector, train_loader, optimizer, criterion):
+def train(selector, train_loader, optimizer, class_weight):
     selector.train()
 
     total_loss = 0
     total_correct = 0
     total_count = 0
 
-    for feats, label in train_loader:
+    for feats, label ,w in train_loader:
         feats = feats.to(device)
         label = label.to(device)
+        w = w.to(device)
+
         logits, _ = selector(feats)
-        loss = criterion(logits, label)
+        loss_each = F.cross_entropy(logits, label, weight=class_weight, reduction='none')
+        loss = (loss_each * w).mean()
+
+
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
@@ -84,7 +95,7 @@ def train(selector, train_loader, optimizer, criterion):
     return ave_loss, ave_correct
 
 
-def test(selector, test_loader,criterion):
+def test(selector, test_loader,class_weight):
     selector.eval()
     
     total_loss = 0
@@ -96,9 +107,9 @@ def test(selector, test_loader,criterion):
             feats = feats.to(device)
             label = label.to(device)
 
-            logits, _  = selector(feats)
-            loss = criterion(logits, label.to(device))
 
+            logits, _  = selector(feats)
+            loss = F.cross_entropy(logits, label, weight=class_weight, reduction='mean')
             pred = logits.argmax(dim = 1)
             correct = (pred == label).sum().item()
             total_correct += correct
@@ -113,7 +124,7 @@ def test(selector, test_loader,criterion):
 
 def main():
     #変える部分-----------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selecttest"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\select_and_margin"
     modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2\model.pth"
     filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
 
@@ -125,7 +136,7 @@ def main():
     patience_stop = 30
     patience_scheduler = 10
 
-    selector = SelectorNet().to(device)
+    selector = MyModel.SelectorNet().to(device)
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(selector.parameters(), lr=1e-3, weight_decay=1e-4)
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=patience_scheduler)
@@ -156,15 +167,6 @@ def main():
     std_mag_data = std_mag_data.to(device)
 
 
-    feats, label =build_selector_batch(MDN2, std_rotate_data, std_mag_data, std_y_data)
-    feats = feats.cpu()
-    label = label.cpu()
-
-
-
-
-    dataset = torch.utils.data.TensorDataset(feats, label)
-
     scaler_data = {
         'x_mean': xdata_mean.cpu().numpy(),  # GPUからCPUへ移動してnumpy配列へ変換
         'x_std': xdata_std.cpu().numpy(),
@@ -176,14 +178,39 @@ def main():
     scaler_pass = os.path.join(result_dir, "scaler")
     myfunction.wirte_pkl(scaler_data, scaler_pass)
 
+    with torch.no_grad():
+        _, mu_std, _ = MDN2(std_rotate_data)
+        label, margin, d1, d2 = teacher_label_and_margin(mu_std, std_y_data)
 
+    feats = torch.cat([mu_std[:,0,:], mu_std[:,1,:], std_mag_data], dim=1)  # [N, 3+3+9]
 
-    N = len(dataset)
+    N = feats.size(0)
+    perm = torch.randperm(N)
     n_train = int(N * r)
-    n_test  = N - n_train 
-    train_dataset, test_dataset = torch.utils.data.random_split(dataset, [n_train, n_test],generator=torch.Generator().manual_seed(0))
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=1, persistent_workers=True)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=1, persistent_workers=True)
+    idx_tr, idx_te = perm[:n_train], perm[n_train:]
+
+    feats_tr, feats_te   = feats[idx_tr], feats[idx_te]
+    label_tr, label_te   = label[idx_tr], label[idx_te]
+    margin_tr, margin_te = margin[idx_tr], margin[idx_te]
+
+    class_weight = get_class_weight(label_tr.to(device))
+    m_w_tr, lo, hi = make_margin_weights(margin_tr.to(device), low_q=0.2, high_q=0.8)
+    criterion = torch.nn.CrossEntropyLoss(weight=class_weight, reduction='none')
+
+    train_ds = torch.utils.data.TensorDataset(feats_tr.cpu(), label_tr.cpu().long(), m_w_tr.cpu())
+    test_ds  = torch.utils.data.TensorDataset(feats_te.cpu(), label_te.cpu().long())
+    train_loader = DataLoader(train_ds, batch_size=128, shuffle=True)
+    test_loader  = DataLoader(test_ds,  batch_size=128, shuffle=False)
+
+
+
+
+
+
+
+
+
+
 
     start_epoch = 0
     record_train_loss = []
@@ -198,8 +225,8 @@ def main():
 
     try:
         for epoch in range(start_epoch, num_epochs):
-            train_loss, train_correct = train(selector, train_loader, optimizer, criterion)
-            test_loss, test_correct = test(selector, test_loader, criterion)
+            train_loss, train_correct = train(selector, train_loader, optimizer, class_weight)
+            test_loss, test_correct = test(selector, test_loader, class_weight)
             record_train_loss.append(train_loss)
             record_test_loss.append(test_loss)
             scheduler.step(test_loss)

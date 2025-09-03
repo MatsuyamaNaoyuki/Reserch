@@ -23,7 +23,7 @@ def culc_currect(y_data, estimation_array):
     contact_y_data = y_data[:half]
     no_contact_y_data = y_data[half:]
     contact_y_data = contact_y_data + contact_y_data
-    no_contact_y_data = no_contact_y_data + no_contact_y_data
+    no_contact_y_data = no_contact_y_data + no_contact_y_data  
     minlen = min(len(contact_y_data), len(no_contact_y_data), len(estimation_array))
     currect = 0
     for i in range(minlen):
@@ -41,14 +41,29 @@ def culc_currect(y_data, estimation_array):
     
 
 y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\GRU_noforce\result20250902_144114.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\select2\result20250829_152315.pickle")
+estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selectGRUresup\result20250830_220959.pickle")
+js = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selectGRUresup\js20250903_165552.pickle")
 
-myfunction.print_val(estimation_array)
+# y_data_usiro = y_data.loc[y_data["type"].eq(1)].copy()
+
+# y_data_usiro = y_data_usiro[32:3032]
+# myfunction.print_val(y_data_usiro)
+
+ 
+# js = js[:3000]
+idx = js.cpu().numpy()
+y_data = y_data.iloc[idx]
+
+# y_data = pd.concat([y_data, y_data_usiro], axis=0, ignore_index=True)
+
+
+# estimation_array = [x[0] for x in estimation_array]
+# estimation_array = [x[9:12] for x in estimation_array]
+
 no_contact_real = True
-contact_real = False
-no_contact_est = True
-contact_est = False
+contact_real = True
+no_contact_est = False
+contact_est = True
 
 
 list_estimation_array = [t.cpu().tolist() for t in estimation_array]
@@ -124,6 +139,7 @@ if no_contact_est:
     axes[0].scatter(t, ex, label="Estimated nocontact X", s=1, c="orange", alpha=0.7)
     axes[1].scatter(t, ey, label="Estimated nocontact y", s=1, c="orange", alpha=0.7)
     axes[2].scatter(t, ez, label="Estimated nocontact z", s=1, c="orange", alpha=0.7)
+
 axes[0].set_ylabel("X")
 axes[0].legend()
 

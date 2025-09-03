@@ -208,10 +208,10 @@ def make_row_data_with_gosa(dis_array):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\noforce\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle"
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\GRUseikika\model.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle"
 motor_angle = True
-motor_force = False
+motor_force = True
 magsensor = True
 L = 32
 stride = 1
@@ -244,12 +244,15 @@ y_data = y_data.to(device)
 resultdir = os.path.dirname(modelpath)
 scaler_path = myfunction.find_pickle_files("scaler", resultdir)
 scaler_data = myfunction.load_pickle(scaler_path)
-x_mean = torch.tensor(scaler_data['x_mean']).to(device)
-x_std = torch.tensor(scaler_data['x_std']).to(device)
-y_mean = torch.tensor(scaler_data['y_mean']).to(device)
-y_std = torch.tensor(scaler_data['y_std']).to(device)
-x_change = (x_data - x_mean) / x_std
-y_change = (y_data - y_mean) / y_std
+x_min = torch.tensor(scaler_data['x_min']).to(device)
+x_max = torch.tensor(scaler_data['x_max']).to(device)
+y_min = torch.tensor(scaler_data['y_min']).to(device)
+y_max = torch.tensor(scaler_data['y_max']).to(device)
+x_scale = (x_max - x_min).clamp(min=1e-8)
+y_scale = (y_max - y_min).clamp(min=1e-8)
+
+x_change = (x_data - x_min) / x_scale
+y_change = (y_data - y_min) / y_scale
 
 type_end_list = myfunction.get_type_change_end(typedf)
 
@@ -281,7 +284,7 @@ for i in range(len(seq_x)):
     single_sample = seq_x[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     with torch.no_grad():  # 勾配計算を無効化
         prediction = model_from_script(single_sample)
-    prediction = prediction * y_std + y_mean
+    prediction = prediction * y_scale + y_min
     prediction_array.append(prediction)
     real_array.append(seq_y[sample_idx].tolist())
     distance = culc_gosa(prediction.tolist()[0], seq_y[sample_idx].tolist())
@@ -304,11 +307,11 @@ print("1列ごとの平均:", column_means1.round(2))
 print("2列ごとの平均:", column_means2.round(2))
 # myfunction.send_message_for_test(column_means.round(2))
 
-parent = os.path.dirname(modelpath)
-resultpath = os.path.join(parent, "result") 
-myfunction.wirte_pkl(prediction_array, resultpath)
-js_path = os.path.join(parent, "js") 
-myfunction.wirte_pkl(js, js_path)
+# parent = os.path.dirname(modelpath)
+# resultpath = os.path.join(parent, "result") 
+# myfunction.wirte_pkl(prediction_array, resultpath)
+# js_path = os.path.join(parent, "js") 
+# myfunction.wirte_pkl(js, js_path)
 
 # myfunction.wirte_pkl(prediction_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\result")
 # myfunction.wirte_pkl(real_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\real")

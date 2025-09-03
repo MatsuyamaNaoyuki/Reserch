@@ -30,81 +30,8 @@ def culc_gosa(prediction, ydata):
         dis_array[i] = distance
     return dis_array
 
-def get_min_loss_epoch(file_path):
-    testdf = pd.read_pickle(file_path)
-    testdf = pd.DataFrame(testdf)
-    filter_testdf = testdf[testdf.index % 10 == 0]
-    minid = filter_testdf.idxmin()
-    return minid.iloc[-1]
 
-def detect_file_type(filename):
-    # Pathオブジェクトで拡張子を取得
-    file_extension = Path(filename).suffix.lower()
 
-    # 拡張子に基づいてファイルタイプを判定
-    if file_extension == '.pickle':
-        return True
-    elif file_extension == '.csv':
-        return False
-    else:
-        return 'unknown'  # サポート外の拡張子
-
-def make_sequence_tensor_stride(x, y, typedf, L, stride):
-    typedf = typedf.tolist()
-    typedf.insert(0, 0)
-    total_span = (L - 1) * stride
-
-    seq_x, seq_y = [], []
-
-    nan_mask = torch.isnan(x).any(dim=1)
-    nan_rows = nan_mask.nonzero(as_tuple=True)[0].tolist()
-
-    nan_rows_set = set(nan_rows)  # 高速化のため set にしておく
-    first_group_len = None  # ← 追加：最初のグループの shape[0] を格納
-
-    for i in range(len(typedf) - 1):
-        start = typedf[i] + total_span
-        end = typedf[i + 1]
-        if end <= start:
-            continue
-
-        js = torch.arange(start, end, device=x.device)
-        relative_indices = torch.arange(L-1, -1, -1, device=x.device) * stride
-        indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
-
-       # --- ここで NaN 系列を除外する ---
-        # indices を CPU に移動して numpy に変換
-        indices_np = indices.cpu().numpy()
-        # nan_rows が含まれているか判定
-        valid_mask = []
-        for row in indices_np:
-            if any(idx in nan_rows_set for idx in row):
-                valid_mask.append(False)  # nan を含む → 無効
-            else:
-                valid_mask.append(True)   # nan を含まない → 有効
-
-        valid_mask = torch.tensor(valid_mask, device=x.device)
-
-        # 有効な indices だけ残す
-        indices = indices[valid_mask]
-        js = js[valid_mask]
-
-        if indices.shape[0] == 0:
-            continue  # 有効な系列がなければスキップ
-        # 最初のグループだけ取得
-        if first_group_len is None:
-            first_group_len = indices.shape[0]
-
-        x_seq = x[indices]
-        y_seq = y[js]
-
-        seq_x.append(x_seq)
-        seq_y.append(y_seq)
-
-    seq_x = torch.cat(seq_x, dim=0)
-    seq_y = torch.cat(seq_y, dim=0)
-
-    return seq_x, seq_y, first_group_len  # ← 追加：最初のグループ長も返す
 
 
 def make_touch_hist():
@@ -205,7 +132,8 @@ def make_row_data_with_gosa(dis_array):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2\model.pth"
+MDNpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2\model.pth"
+selectorpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selecttest\selector.pth"
 filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle"
 
 touch_vis = True
@@ -215,70 +143,83 @@ row_data_swith = True
 
 input_dim = 3
 
-
-
-
-pickle = detect_file_type(filename)
 basepath = Path(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult")
 
-rotate_data, y_data, typedf= myfunction.read_pickle_to_torch(filename, True, True, True)
+
+
+x_data, y_data, typedf = myfunction.read_pickle_to_torch(filename, motor_angle=True, motor_force=True, magsensor=True)
 y_last3 = y_data[:, -3:]
 
+mdn_scaler_path = myfunction.find_pickle_files("scaler", os.path.dirname(MDNpath))
+mdn_scaler = myfunction.load_pickle(mdn_scaler_path)
+
+
+
+select_scaler_path = myfunction.find_pickle_files("scaler", os.path.dirname(selectorpath))
+select_scaler_data = myfunction.load_pickle(select_scaler_path)
+sel_x_mean = torch.tensor(select_scaler_data['x_mean'],device = device).float()
+sel_x_std = torch.tensor(select_scaler_data['x_std'],device = device).float()
+sel_y_mean = torch.tensor(select_scaler_data['y_mean'],device = device).float()
+sel_y_std = torch.tensor(select_scaler_data['y_std'],device = device).float()
+sel_fitA = select_scaler_data['fitA']
+
+mdn_x_mean = torch.tensor(mdn_scaler['x_mean'], device=device).float()
+mdn_x_std = torch.tensor(mdn_scaler['x_std'], device=device).float()
+mdn_y_mean = torch.tensor(mdn_scaler['y_mean'], device=device).float()
+mdn_y_std = torch.tensor(mdn_scaler['y_std'], device=device).float()
+
+
+alphaA = torch.ones_like(sel_fitA.amp)
+xA_proc = Mydataset.apply_align_torch(x_data, sel_fitA, alphaA)
+rot3_raw, force3_raw, m9_raw = torch.split(xA_proc, [3,3,9], dim=1)
+
+t3_std_mdn = (rot3_raw.to(device) - mdn_x_mean) / mdn_x_std
+
+m9_session_mean = m9_raw.mean(dim = 0, keepdim=True).to(device)
+sel_m9_mean = sel_x_mean[6:15].unsqueeze(0)
+m9_raw_shifted = m9_raw.to(device) + (sel_m9_mean - m9_session_mean)
+
+m9_std_sel = (m9_raw_shifted - sel_m9_mean) / sel_x_std[6:15].unsqueeze(0)  # (N,9)
 
 
 
 
-resultdir = os.path.dirname(modelpath)
-scaler_path = myfunction.find_pickle_files("scaler", resultdir)
-scaler_data = myfunction.load_pickle(scaler_path)
-x_mean = torch.tensor(scaler_data['x_mean'])
-x_std = torch.tensor(scaler_data['x_std'])
-y_mean = torch.tensor(scaler_data['y_mean'])
-y_std = torch.tensor(scaler_data['y_std'])
-fitA = scaler_data['fitA']
-
-alphaA = torch.ones_like(fitA.amp)
-xA_proc = Mydataset.apply_align_torch(rotate_data, fitA, alphaA)
-x_change = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
-y_change = Mydataset.apply_standardize_torch(y_last3, y_mean, y_std)
-
-mask = torch.isfinite(x_change).all(dim=1) & torch.isfinite(y_last3).all(dim=1)
-rotate_data_clean = x_change[mask]
-y_last3_clean     = y_last3[mask]
-
-rotate_data_clean ,force3_raw, m9_raw = torch.split(rotate_data_clean, [3,3,9], dim=1)
-
-model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
-model_from_script.eval()
+model_MDN = torch.jit.load(MDNpath, map_location="cuda:0")
+model_MDN.eval()
+model_select = torch.jit.load(selectorpath, map_location="cuda:0")
+model_select.eval()
 
 
 
-# x_data から 1 サンプルを取得（例: 0番目のサンプル）
-dis_array1 = []
-dis_array2 = []
 prediction_array = []
-real_array = []
-mu_list = []
-
-y_std = y_std.to(device)
-y_mean = y_mean.to(device)
 
 
-for i in range(len(rotate_data_clean)):
-    sample_idx = i  # 推論したいサンプルのインデックス
-    single_sample = rotate_data_clean[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
-    single_sample = single_sample.to(device)
-    with torch.no_grad():  # 勾配計算を無効化
-        pi, mu, sigma = model_from_script(single_sample)
-    mu = mu * y_std + y_mean
-    prediction_array.append(mu)
-    real_array.append(y_last3_clean[sample_idx].tolist())
+n_ok = 0; n = 0
+
+
+with torch.no_grad():
+
+    for i in range(t3_std_mdn.size(0)):
+        t3 = t3_std_mdn[i:i+1]
+        m9i = m9_std_sel[i:i+1]
+        pi, mu_std_mdn, sigma = model_MDN(t3)
+        mu_world = mu_std_mdn * mdn_y_std + mdn_y_mean
+        mu_std_sel = (mu_world - sel_y_mean) / sel_y_std
+        feats = torch.cat([mu_std_sel[:,0,:], mu_std_sel[:,1,:], m9i], dim=1)  # (1,15)
+        logits, _ = model_select(feats)      # (1,2)
+        pred_idx = logits.argmax(dim=1).item()
+
+        # 選ばれたμは“実スケール”で返す（可視化や保存はこちらが正しい）
+        pred_world = mu_world[0, pred_idx, :]            # (3,)
+        prediction_array.append(pred_world.detach().cpu())
+
+
+
+
 
 
 myfunction.print_val(prediction_array)
-parent = os.path.dirname(modelpath)
-resultpath = os.path.join(parent, "result") 
-myfunction.wirte_pkl(prediction_array, resultpath)
+myfunction.wirte_pkl(prediction_array, "result")
 
 
 # dis_array1 = np.array(dis_array1)

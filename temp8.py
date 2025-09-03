@@ -14,7 +14,7 @@ import pandas as pd
 import os, sys
 import japanize_matplotlib
 from pathlib import Path
-
+from myclass import Mydataset
 
 
 
@@ -62,8 +62,6 @@ def make_sequence_tensor_stride(x, y, typedf, L, stride):
     nan_rows_set = set(nan_rows)  # 高速化のため set にしておく
     first_group_len = None  # ← 追加：最初のグループの shape[0] を格納
 
-    jslist = []
-
     for i in range(len(typedf) - 1):
         start = typedf[i] + total_span
         end = typedf[i + 1]
@@ -102,12 +100,11 @@ def make_sequence_tensor_stride(x, y, typedf, L, stride):
 
         seq_x.append(x_seq)
         seq_y.append(y_seq)
-        jslist.append(js)
 
     seq_x = torch.cat(seq_x, dim=0)
     seq_y = torch.cat(seq_y, dim=0)
-    jslist = torch.cat(jslist, dim = 0)
-    return seq_x, seq_y, first_group_len ,jslist # ← 追加：最初のグループ長も返す
+
+    return seq_x, seq_y, first_group_len  # ← 追加：最初のグループ長も返す
 
 
 def make_touch_hist():
@@ -208,10 +205,10 @@ def make_row_data_with_gosa(dis_array):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\noforce\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle"
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\alluse_stride1\model.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
 motor_angle = True
-motor_force = False
+motor_force = True
 magsensor = True
 L = 32
 stride = 1
@@ -235,8 +232,10 @@ if pickle:
     x_data,y_data , typedf= myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
 else:
     x_data,y_data = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
-x_data = x_data.to(device)
-y_data = y_data.to(device)
+x_data = x_data
+y_data = y_data
+
+
 
 
 
@@ -244,20 +243,40 @@ y_data = y_data.to(device)
 resultdir = os.path.dirname(modelpath)
 scaler_path = myfunction.find_pickle_files("scaler", resultdir)
 scaler_data = myfunction.load_pickle(scaler_path)
-x_mean = torch.tensor(scaler_data['x_mean']).to(device)
-x_std = torch.tensor(scaler_data['x_std']).to(device)
-y_mean = torch.tensor(scaler_data['y_mean']).to(device)
-y_std = torch.tensor(scaler_data['y_std']).to(device)
-x_change = (x_data - x_mean) / x_std
-y_change = (y_data - y_mean) / y_std
+x_mean = torch.tensor(scaler_data['x_mean'])
+x_std = torch.tensor(scaler_data['x_std'])
+y_mean = torch.tensor(scaler_data['y_mean'])
+y_std = torch.tensor(scaler_data['y_std'])
+fitA = scaler_data['fitA']
+
+alphaA = torch.ones_like(fitA.amp)
+xA_proc = Mydataset.apply_align_torch(x_data, fitA, alphaA)
+
+rot3_raw, force3_raw, m9_raw = torch.split(xA_proc, [3, 3, 9], dim=1)
+
+
+m9_train_mean = x_mean[6:15].unsqueeze(0)             # 学習時の磁気9ch平均（1,9）
+m9_session_mean = m9_raw.mean(dim=0, keepdim=True)    # 今回セッションの磁気9ch平均（1,9）
+
+m9_raw_shifted = m9_raw + (m9_train_mean - m9_session_mean)
+
+# 再結合
+x_raw_shifted = torch.cat([rot3_raw, force3_raw, m9_raw_shifted], dim=1)
+
+x_change = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
+y_change = Mydataset.apply_standardize_torch(y_data, y_mean, y_std)
 
 type_end_list = myfunction.get_type_change_end(typedf)
 
 
-seq_x, seq_y, first_group_len, js= make_sequence_tensor_stride(x_change, y_data,type_end_list, L=L, stride=stride)
+seq_x, seq_y, first_group_len= make_sequence_tensor_stride(x_change, y_data,type_end_list, L=L, stride=stride)
 
-
-
+seq_x = seq_x.to(device)
+seq_y = seq_y.to(device)
+y_mean = y_mean.to(device)
+y_std = y_std.to(device)
+x_mean = x_mean.to(device)
+x_std = x_std.to(device)
 # モデルのロード
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
@@ -274,9 +293,9 @@ print(f"seq_x の長さ: {len(seq_x)}")
 print(f"first_group_len: {first_group_len}")
 # print(dis_array)
 
-
+first_group_len = 3000
 start = time.time()
-for i in range(len(seq_x)):
+for i in range(6000):
     sample_idx = i  # 推論したいサンプルのインデックス
     single_sample = seq_x[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     with torch.no_grad():  # 勾配計算を無効化
@@ -304,14 +323,9 @@ print("1列ごとの平均:", column_means1.round(2))
 print("2列ごとの平均:", column_means2.round(2))
 # myfunction.send_message_for_test(column_means.round(2))
 
-parent = os.path.dirname(modelpath)
-resultpath = os.path.join(parent, "result") 
-myfunction.wirte_pkl(prediction_array, resultpath)
-js_path = os.path.join(parent, "js") 
-myfunction.wirte_pkl(js, js_path)
 
-# myfunction.wirte_pkl(prediction_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\result")
-# myfunction.wirte_pkl(real_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\real")
+# myfunction.wirte_pkl(prediction_array, "result")
+# myfunction.wirte_pkl(real_array, "real")
 print(end-start)
 if touch_vis:
     make_touch_hist()

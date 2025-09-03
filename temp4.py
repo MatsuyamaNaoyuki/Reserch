@@ -1,219 +1,230 @@
-# -*- coding: utf-8 -*-
+import time
+#resnetを実装したもの
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torchvision.models import resnet18
+from torch.utils.data import DataLoader
+from myclass import myfunction
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+import matplotlib.pyplot as plt
+import random
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib.widgets import Slider
-from scipy.signal import find_peaks
-from myclass import myfunction  # ←既存のユーティリティ
+import os, sys
+import japanize_matplotlib
+from pathlib import Path
 
-# ====== 設定 ======
-DATA_PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\mixhit_fortraintypenan20250715_163007.pickle"  # small の元データ
-TYPE_COL_ORIG = "type"                             # 元の列名（small を付ける前）
-ROTATE_COL    = "rotate3"  
-KEYS          = ["Mc5"]                              # 極小値を取る列
-# KEYS          = ["force"]                            # 可視化対象（"sensor", "Mc" などでもOK）
-# KEYS          = ["sensor1","sensor2","sensor3"]  
-# KEYS          = ["sensor4","sensor5","sensor6"]  
-# KEYS          = ["sensor7","sensor8","sensor9"]  
-INIT_N_CYCLES = 10                                 # 初期の表示山数(スライダーで変更可)
-# ===================
 
-def get_minimum(x, distance=150, prominence=5):
-    """極小値インデックスを返す（外れ間隔は後段の揃え方で吸収）"""
-    minima, _ = find_peaks(-x, distance=distance, prominence=prominence)
-    return np.sort(minima).astype(int)
 
-def align_B_on_A_n_cycles(seriesA, seriesB, a_mins, b_mins, k, n_cycles=2):
-    """
-    A の極小[k]..[k+n_cycles] 区間を x 軸にして、
-    B を山単位で切り出して A の先頭位置に重ねる（不足は NaN、余りは捨てる）。
-    """
-    if k + n_cycles >= len(a_mins) or k + n_cycles >= len(b_mins):
-        raise ValueError("k と n_cycles の組み合わせが極小値配列の長さを超えています。")
 
-    a_start = int(a_mins[k])
-    a_end   = int(a_mins[k + n_cycles])
-    x_idx   = np.arange(a_start, a_end + 1, dtype=int)
 
-    A_win = seriesA.iloc[a_start:a_end + 1].to_numpy()
-    B_on_A_win = np.full_like(A_win, np.nan, dtype=float)
 
-    # 各山ごと（k..k+n_cycles-1）で切り出して、A の先頭(a_start)から詰めていく
-    cursor = 0  # A 側の貼り付け先カーソル
-    for cyc in range(n_cycles):
-        a0, a1 = int(a_mins[k + cyc]), int(a_mins[k + cyc + 1])
-        b0, b1 = int(b_mins[k + cyc]), int(b_mins[k + cyc + 1])
+def culc_gosa(prediction, ydata):
+    dis_array = np.zeros(4)
+    # print(ydata)
+    for i in range(4):
+        pointpred =np.array([prediction[i * 3],prediction[i * 3 + 1],prediction[i * 3 + 2]])
+        pointydata = np.array([ydata[3 * i], ydata[3 * i + 1], ydata[3 * i + 2]])
+        distance = np.linalg.norm(pointpred - pointydata)
+        dis_array[i] = distance
+    return dis_array
 
-        segA = seriesA.iloc[a0:a1].to_numpy()
-        segB = seriesB.iloc[b0:b1].to_numpy()
 
-        m = min(len(segA), len(segB))
-        if m > 0:
-            B_on_A_win[cursor:cursor + m] = segB[:m]
-        cursor += len(segA)  # A のその山ぶんだけ進める
 
-    return x_idx, A_win, B_on_A_win
+def detect_file_type(filename):
+    # Pathオブジェクトで拡張子を取得
+    file_extension = Path(filename).suffix.lower()
 
-# ===== データ読み込み & 前処理（small を type で 0/1 に分割 → A0/notouch に命名）=====
-smalldata = myfunction.load_pickle(DATA_PATH)
-if not isinstance(smalldata, pd.DataFrame):
-    smalldata = pd.DataFrame(smalldata)
+    # 拡張子に基づいてファイルタイプを判定
+    if file_extension == '.pickle':
+        return True
+    elif file_extension == '.csv':
+        return False
+    else:
+        return 'unknown'  # サポート外の拡張子
 
-# small 接頭辞を付与（以降は smallXXX で統一）
-smalldata.columns = ["small" + c if not str(c).startswith("small") else c for c in smalldata.columns]
-TYPE_COL = "small" + TYPE_COL_ORIG
-ROTATE_touch = "touch_small" + ROTATE_COL
-ROTATE_notouch = "notouch_small" + ROTATE_COL
+def make_sequence_tensor_stride(x, y, typedf, L, stride):
+    typedf = typedf.tolist()
+    typedf.insert(0, 0)
+    total_span = (L - 1) * stride
 
-# type で分割
-dftouch = smalldata.loc[smalldata[TYPE_COL] == 0].reset_index(drop=True).add_prefix("touch_")
-dfnotouch = smalldata.loc[smalldata[TYPE_COL] == 1].reset_index(drop=True).add_prefix("notouch_")
+    seq_x, seq_y = [], []
 
-# 並べて参照できるよう横結合（行数は type ごとに違ってもOK：後で揃えて抜き出す）
-df = pd.concat([dftouch, dfnotouch], axis=1)
+    nan_mask = torch.isnan(x).any(dim=1)
+    nan_rows = nan_mask.nonzero(as_tuple=True)[0].tolist()
 
-# 可視化対象列の抽出（touch_* と notouch_* の双方を対象）
-cols_all = [c for c in df.columns if any(k.lower() in c.lower() for k in KEYS)]
-cols_all.sort()
+    nan_rows_set = set(nan_rows)  # 高速化のため set にしておく
+    first_group_len = None  # ← 追加：最初のグループの shape[0] を格納
 
-# touch/notouch の対応ペア（尾が同じものを対応付け）
-pairs = []
-for c in cols_all:
-    if c.startswith("notouch_"):
-        tail = c[len("notouch_"):]
-        touch_col = "touch_" + tail
-        if touch_col in df.columns:
-            pairs.append((touch_col, c))
+    jslist = []
 
-if not pairs:
-    raise RuntimeError("対応ペアが見つかりませんでした。KEYS を見直してください。")
+    for i in range(len(typedf) - 1):
+        start = typedf[i] + total_span
+        end = typedf[i + 1]
+        if end <= start:
+            continue
 
-# 極小値（touch/notouch それぞれの rotate3 から）
-if ROTATE_touch not in df.columns or ROTATE_notouch not in df.columns:
-    raise KeyError(f"回転列が見つかりません: {ROTATE_touch}, {ROTATE_notouch}")
+        js = torch.arange(start, end, device=x.device)
+        relative_indices = torch.arange(L-1, -1, -1, device=x.device) * stride
+        indices = js.unsqueeze(1) - relative_indices  # shape: (num_seq, L)
 
-a_mins = get_minimum(df[ROTATE_touch].to_numpy())
-b_mins = get_minimum(df[ROTATE_notouch].to_numpy())
+       # --- ここで NaN 系列を除外する ---
+        # indices を CPU に移動して numpy に変換
+        indices_np = indices.cpu().numpy()
+        # nan_rows が含まれているか判定
+        valid_mask = []
+        for row in indices_np:
+            if any(idx in nan_rows_set for idx in row):
+                valid_mask.append(False)  # nan を含む → 無効
+            else:
+                valid_mask.append(True)   # nan を含まない → 有効
 
-# ===== 可視化：n 山ぶん + スライダー =====
-fig, ax = plt.subplots(figsize=(12, 6))
-plt.subplots_adjust(bottom=0.18)
+        valid_mask = torch.tensor(valid_mask, device=x.device)
 
-linesA = {}
-linesB = {}
+        # 有効な indices だけ残す
+        indices = indices[valid_mask]
+        js = js[valid_mask]
 
-# 初期描画（最初の k=0）
-n_cycles = INIT_N_CYCLES
+        if indices.shape[0] == 0:
+            continue  # 有効な系列がなければスキップ
+        # 最初のグループだけ取得
+        if first_group_len is None:
+            first_group_len = indices.shape[0]
 
-def compute_max_k():
-    # k..k+n_cycles が A/B の両方で有効になる最大 k
-    return max(0, min(len(a_mins), len(b_mins)) - (n_cycles + 1))
+        x_seq = x[indices]
+        y_seq = y[js]
 
-max_k = compute_max_k()
+        seq_x.append(x_seq)
+        seq_y.append(y_seq)
+        jslist.append(js)
 
-# 一度だけ line を作っておき、後は set_data で更新
-k0 = 0
-x0, _, _ = align_B_on_A_n_cycles(df[pairs[0][0]], df[pairs[0][1]], a_mins, b_mins, k0, n_cycles=n_cycles)
-for a_col, b_col in pairs:
-    _, Awin, Bwin = align_B_on_A_n_cycles(df[a_col], df[b_col], a_mins, b_mins, k0, n_cycles=n_cycles)
-    (lA,) = ax.plot(x0, Awin, label=a_col, alpha=0.9, color="red")
-    (lB,) = ax.plot(x0, Bwin, label=b_col, alpha=0.9, color="blue")
-    linesA[a_col] = lA
-    linesB[b_col] = lB
+    seq_x = torch.cat(seq_x, dim=0)
+    seq_y = torch.cat(seq_y, dim=0)
+    jslist = torch.cat(jslist, dim = 0)
+    return seq_x, seq_y, first_group_len ,jslist # ← 追加：最初のグループ長も返す
 
-ax.set_title("A(type=0) vs A(type=1) aligned by minima")
-ax.set_xlabel("Row Index (touch axis)")
-ax.set_ylabel("Value")
-ax.grid(True)
-ax.legend(ncol=2)
 
-# y 範囲は全体で固定（動的にしない）
-ymin, ymax = np.inf, -np.inf
-for a_col, b_col in pairs:
-    yA = df[a_col].to_numpy(dtype=float)
-    yB = df[b_col].to_numpy(dtype=float)
-    for arr in (yA, yB):
-        arr = arr[np.isfinite(arr)]
-        if arr.size:
-            ymin = min(ymin, np.min(arr))
-            ymax = max(ymax, np.max(arr))
-if not np.isfinite(ymin): ymin, ymax = -1.0, 1.0
-pad = 0.05 * (ymax - ymin if ymax > ymin else 1.0)
-ax.set_ylim(ymin - pad, ymax + pad)
-# ax.set_ylim(680,820)
-# ax.set_ylim(-200,500)
 
-def redraw_k(k:int):
-    """k から n_cycles 山ぶんに更新"""
-    k = int(np.clip(k, 0, max_k))
-    x_idx, _, _ = align_B_on_A_n_cycles(df[pairs[0][0]], df[pairs[0][1]], a_mins, b_mins, k, n_cycles=n_cycles)
-    ax.set_xlim(x_idx[0], x_idx[-1])
-    for a_col, b_col in pairs:
-        x_idx, Awin, Bwin = align_B_on_A_n_cycles(df[a_col], df[b_col], a_mins, b_mins, k, n_cycles=n_cycles)
-        linesA[a_col].set_data(x_idx, Awin)
-        linesB[b_col].set_data(x_idx, Bwin)
 
-    ax.set_title(
-        f"A(type=0) vs A(type=1) aligned by minima | k={k} → k+{n_cycles}={k+n_cycles} "
-        f"(touch idx: {int(a_mins[k])}..{int(a_mins[k+n_cycles])})"
-    )
-    fig.canvas.draw_idle()
+#変える部分-----------------------------------------------------------------------------------------------------------------
 
-# スライダー（k と n_cycles）
-ax_slider_k = plt.axes([0.12, 0.08, 0.76, 0.04])
-ax_slider_n = plt.axes([0.12, 0.03, 0.76, 0.04])
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\GRUseikika\model.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle"
+basefilepath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
+motor_angle = True
+motor_force = True
+magsensor = True
+L = 32
+stride = 1
 
-s_k = Slider(ax_slider_k, "Start cycle k", 0, max_k, valinit=0, valstep=1)
-s_n = Slider(ax_slider_n, "n_cycles", 1, 10, valinit=n_cycles, valstep=1)
+touch_vis = True
+scatter_motor = True
+row_data_swith = True
+#-----------------------------------------------------------------------------------------------------------------
 
-def refresh_slider_ranges():
-    global max_k
-    max_k = compute_max_k()
-    try:
-        s_k.valmax = max_k
-        s_k.ax.set_xlim(s_k.valmin, s_k.valmax)
-    except Exception:
-        pass
-    if int(round(s_k.val)) > max_k:
-        s_k.set_val(max_k)
+input_dim = 3 * motor_angle + 3 * motor_force + 9 * magsensor
+output_dim = 12
 
-def on_slide_k(val):
-    k = int(round(val))
-    if k != int(round(s_k.val)):
-        s_k.set_val(k); return
-    redraw_k(k)
 
-def on_slide_n(val):
-    global n_cycles
-    n_cycles = int(round(val))
-    refresh_slider_ranges()
-    redraw_k(int(round(s_k.val)))
 
-s_k.on_changed(on_slide_k)
-s_n.on_changed(on_slide_n)
 
-# ページ送り：n_cycles 山単位で進む/戻る
-def step_pages(delta_blocks:int):
-    k_now = int(round(s_k.val))
-    k_new = max(0, min(max_k, k_now + delta_blocks * n_cycles))
-    s_k.set_val(k_new)  # これで on_slide_k → redraw_k が呼ばれる
 
-def on_key(event):
-    if event.key in ("left", "down"):
-        step_pages(-1)
-    elif event.key in ("right", "up"):
-        step_pages(1)
+basepath = Path(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult")
 
-def on_scroll(event):
-    if event.button == "up":
-        step_pages(-1)
-    elif event.button == "down":
-        step_pages(1)
 
-fig.canvas.mpl_connect("key_press_event", on_key)
-fig.canvas.mpl_connect("scroll_event", on_scroll)
 
-# 初期表示
-refresh_slider_ranges()
-redraw_k(0)
-plt.show()
+
+x_data,y_data , typedf= myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
+# base_x_data ,base_y_data, typedf = myfunction.read_pickle_to_torch(basefilepath, motor_angle, motor_force, magsensor)
+
+
+x_data = x_data.to(device)
+y_data = y_data.to(device)
+
+
+
+
+resultdir = os.path.dirname(modelpath)
+scaler_path = myfunction.find_pickle_files("scaler", resultdir)
+scaler_data = myfunction.load_pickle(scaler_path)
+x_min = torch.tensor(scaler_data['x_min']).to(device)
+x_max = torch.tensor(scaler_data['x_max']).to(device)
+y_min = torch.tensor(scaler_data['y_min']).to(device)
+y_max = torch.tensor(scaler_data['y_max']).to(device)
+x_scale = (x_max - x_min).clamp(min=1e-8)
+y_scale = (y_max - y_min).clamp(min=1e-8)
+
+x_change = (x_data - x_min) / x_scale
+y_change = (y_data - y_min) / y_scale
+
+type_end_list = myfunction.get_type_change_end(typedf)
+
+
+seq_x, seq_y, first_group_len, js= make_sequence_tensor_stride(x_change, y_data,type_end_list, L=L, stride=stride)
+
+
+
+# モデルのロード
+
+model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
+model_from_script.eval()
+
+
+
+# x_data から 1 サンプルを取得（例: 0番目のサンプル）
+dis_array1 = []
+dis_array2 = []
+prediction_array = []
+real_array = []
+print(f"seq_x の長さ: {len(seq_x)}")
+print(f"first_group_len: {first_group_len}")
+# print(dis_array)
+
+
+# start = time.time()
+# for i in range(len(seq_x)):
+#     sample_idx = i  # 推論したいサンプルのインデックス
+#     single_sample = seq_x[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
+#     with torch.no_grad():  # 勾配計算を無効化
+#         prediction = model_from_script(single_sample)
+#     prediction = prediction * y_scale + y_min
+#     prediction_array.append(prediction)
+#     real_array.append(seq_y[sample_idx].tolist())
+#     distance = culc_gosa(prediction.tolist()[0], seq_y[sample_idx].tolist())
+#     if i < first_group_len:
+#         dis_array1.append(distance)
+#     else:
+#         dis_array2.append(distance)
+# end = time.time()
+
+# dis_array1 = np.array(dis_array1)
+# dis_array2 = np.array(dis_array2)
+
+
+# dis_array = np.concatenate([dis_array1, dis_array2], axis=0)
+# column_means = np.mean(dis_array, axis=0)
+# column_means1 = np.mean(dis_array1, axis=0)
+# column_means2 = np.mean(dis_array2, axis=0)
+# print("列ごとの平均:", column_means.round(2))
+# print("1列ごとの平均:", column_means1.round(2))
+# print("2列ごとの平均:", column_means2.round(2))
+# # myfunction.send_message_for_test(column_means.round(2))
+
+# # parent = os.path.dirname(modelpath)
+# # resultpath = os.path.join(parent, "result") 
+# # myfunction.wirte_pkl(prediction_array, resultpath)
+# # js_path = os.path.join(parent, "js") 
+# # myfunction.wirte_pkl(js, js_path)
+
+# # myfunction.wirte_pkl(prediction_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\result")
+# # myfunction.wirte_pkl(real_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\real")
+# print(end-start)
+# if touch_vis:
+#     make_touch_hist()
+
+# if scaler_data:
+#     make_scatter_plot_of_motor_and_error()
+
+# if row_data_swith:
+#     make_row_data_with_gosa(dis_array)

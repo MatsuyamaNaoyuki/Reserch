@@ -1,6 +1,6 @@
 import torch
 from dataclasses import dataclass
-
+from myclass import myfunction
 @dataclass
 class Calibfit:
     mu_neutral: torch.Tensor #静止時の平均
@@ -91,3 +91,18 @@ def fit_standardizer_torch(x_train: torch.Tensor):
 
 def apply_standardize_torch(x: torch.Tensor, mu:torch.Tensor, sd:torch.Tensor):
     return (x-mu) / sd
+
+def align_to_standardize_all(kijundata, data):
+
+    fitdata = fit_calibration_torch(kijundata)
+
+    alpha = torch.ones_like(fitdata.amp)
+    data_prop = apply_align_torch(data, fitdata, alpha)
+
+    mean, std = fit_standardizer_torch(data_prop)
+    std_data = apply_standardize_torch(data_prop, mean, std)
+
+    return std_data, mean, std, fitdata
+
+
+

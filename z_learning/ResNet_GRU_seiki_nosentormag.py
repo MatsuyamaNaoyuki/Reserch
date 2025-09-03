@@ -1,3 +1,4 @@
+
 import time, os
 #resnetを実装したもの
 import torch
@@ -151,13 +152,13 @@ def save_test(test_dataset, result_dir):
 def main():
 #---------------------------------------------------------------------------------- --------------------------------------
     motor_angle = True
-    motor_force = False
+    motor_force = True
     magsensor = True
     L = 32 
     stride = 1
 
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\noforce"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\GRUseikika_nosentor"
+    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
     resume_training = False   # 再開したい場合は True にする
 
 
@@ -168,8 +169,9 @@ def main():
 
     
     # ハイパーパラメータ
-    input_dim = 3 * motor_angle + 3 * motor_force + 9 * magsensor
-    output_dim = 12
+
+    input_dim = 12
+    output_dim = 4
     learning_rate = 0.001
     num_epochs = 500
     batch_size = 128
@@ -185,14 +187,13 @@ def main():
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=patience_scheduler)
 
 
-    x_data,y_data, typedf = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor)
+    x_data,y_data, typedf = myfunction.read_pickle_to_torch(filename, motor_angle, motor_force, magsensor, nosentor=True)
     if typedf is None:
         typedf = pd.Series([0] * x_data.shape[0])
+    y_data = y_data[:, -3:]
 
-    
+    myfunction.print_val(x_data[0])
 
-
-    print(y_data[0])
 
 
     x_nan_mask = torch.isnan(x_data).any(dim=1)
@@ -203,19 +204,25 @@ def main():
     x_data_clean = x_data[mask]
     y_data_clean = y_data[mask]
 
-    x_mean = x_data_clean.mean(dim=0, keepdim=True)
-    x_std = x_data_clean.std(dim=0, keepdim=True)
-    y_mean = y_data_clean.mean(dim=0, keepdim=True)
-    y_std = y_data_clean.std(dim=0, keepdim=True)
+    x_min = x_data_clean.amin(dim=0, keepdim=True)
+    x_max = x_data_clean.amax(dim=0, keepdim=True)
+    y_min = y_data_clean.amin(dim=0, keepdim=True)
+    y_max = y_data_clean.amax(dim=0, keepdim=True)
+
+    x_scale = (x_max - x_min).clamp(min=1e-8)
+    y_scale = (y_max - y_min).clamp(min=1e-8)
 
     scaler_data = {
-        'x_mean': x_mean.cpu().numpy(),  # GPUからCPUへ移動してnumpy配列へ変換
-        'x_std': x_std.cpu().numpy(),
-        'y_mean': y_mean.cpu().numpy(),
-        'y_std': y_std.cpu().numpy()
+        'x_min': x_min.cpu().numpy(),
+        'x_max': x_max.cpu().numpy(),
+        'y_min': y_min.cpu().numpy(),
+        'y_max': y_max.cpu().numpy(),
     }
-    x_data = (x_data - x_mean) / x_std
-    y_data = (y_data - y_mean) / y_std
+
+    x_data = (x_data - x_min) / x_scale
+    y_data = (y_data - y_min) / y_scale
+
+
 
     scaler_pass = os.path.join(result_dir, "scaler")
 

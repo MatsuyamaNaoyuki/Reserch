@@ -1,12 +1,7 @@
 import numpy as np
 import torch
-from torch.utils.data import Dataset
-import pandas as pd
+import torch.nn.functional as F
 import torch.nn as nn
-from torch.utils.data import Dataset
-from torch.utils.data import DataLoader
-from diffusers import DDPMScheduler
-from diffusers.training_utils import EMAModel
 from diffusers.optimization import get_scheduler
 import math
 
@@ -456,3 +451,124 @@ class ResNetTransformer(nn.Module):
         out = self.head(out)  # (B, 12)
 
         return out
+
+
+
+class MDN2(nn.Module):
+    def __init__(self, hidden = 128):
+        super().__init__()
+        self.backbone = nn.Sequential(
+            nn.Linear(3, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, hidden),
+            nn.ReLU()
+        )
+        self.out_pi = nn.Linear(hidden, 2)
+        self.out_mu = nn.Linear(hidden, 2*3)
+        self.out_s = nn.Linear(hidden, 2*3)
+    
+    def forward(self, rotate_seq):
+        h = self.backbone(rotate_seq)
+        pi_logit = self.out_pi(h)
+        pi = torch.softmax(pi_logit, dim = -1)
+        mu = self.out_mu(h).view(-1, 2,3)
+        s = self.out_s(h).view(-1,2,3)
+        sigma = F.softplus(s) + 1e-3
+        return pi ,mu,sigma
+
+def mdn_nll(pi, mu, sigma, target):
+    B, K, _ =mu.shape
+    x = target.unsqueeze(1).expand(B,K,3)
+
+    comp_logprob = -0.5 * (((x - mu)/sigma)**2).sum(dim=-1) \
+                   - sigma.log().sum(dim=-1) \
+                   - 0.5*3*torch.log(torch.tensor(2*3.141592653589793, device=mu.device))
+    
+    logprob = torch.logsumexp(torch.log(pi + 1e-8) + comp_logprob, dim=1)
+    return(-logprob).mean()
+    
+
+class SelectorNet(nn.Module):
+    def __init__(self, in_dim = 15, hidden = 128, mode = "cls", use_pi_sigma = False):
+        super().__init__()
+        self.mode = mode
+        self.use_pi_sigma = use_pi_sigma
+        self.shared = nn.Sequential(
+            nn.Linear(in_dim, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, hidden),
+            nn.ReLU(),
+        )
+    
+        self.head_cls = nn.Linear(hidden, 2)
+
+
+        self.head_res1 = nn.Linear(hidden, 3)
+        self.head_res2 = nn.Linear(hidden, 3)
+
+
+    def forward(self, feats):
+        h = self.shared(feats)
+        logits = self.head_cls(h)
+        if self.mode == "cls+res":
+            d1 = self.head_res1(h)
+            d2 = self.head_res2(h)
+            return logits, {"d1":d1, "d2":d2}
+        else:
+            return logits, None
+    
+class SelectorGRU(nn.Module):
+    def __init__(self, mag_dim = 9, hidden = 64, num_layers = 1, fc_dim = 64, p_drop=0.2):
+        super().__init__()
+        self.gru = nn.GRU(input_size= mag_dim, hidden_size=hidden, num_layers= num_layers,
+                          batch_first=True, bidirectional=False)
+        
+        self.selector = nn.Sequential(
+            nn.Linear(hidden + 6, fc_dim),
+            nn.ReLU(inplace = True),
+            nn.Dropout(p_drop),
+            nn.Linear(fc_dim, 2)
+        )
+    
+    def forward(self, mag_seq, mu_pair):
+        out, h = self.gru(mag_seq)
+        h_last = h[-1]
+        x = torch.cat([h_last, mu_pair],dim=1)
+        logits = self.selector(x)
+        return logits
+    
+class SelectorGRUdelta(nn.Module):
+    def __init__(self, mag_dim=9, hidden=64, num_layers=1, fc_dim=64, p_drop=0.2, res_limit=5.0):
+        super().__init__()
+        self.gru = nn.GRU(input_size= mag_dim, hidden_size=hidden, num_layers= num_layers,
+                          batch_first=True, bidirectional=False)
+        
+        self.selector = nn.Sequential(
+            nn.Linear(hidden + 6, fc_dim),
+            nn.ReLU(inplace = True),
+            nn.Dropout(p_drop),
+            nn.Linear(fc_dim, 2)
+        )
+    
+        self.residual = nn.Sequential(
+            nn.Linear(hidden + 6, fc_dim),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p_drop),
+            nn.Linear(fc_dim, 6)
+        )
+
+        nn.init.zeros_(self.residual[-1].weight)
+        nn.init.zeros_(self.residual[-1].bias)
+
+        self.res_limit = res_limit
+
+    def forward(self, mag_seq, mu_pair):
+        _, h = self.gru(mag_seq)
+        h_last = h[-1]
+        x = torch.cat([h_last, mu_pair],dim=1)
+        logits = self.selector(x)
+
+        d_all = torch.tanh(self.residual(x)) * self.res_limit
+        d_n, d_c = d_all[:, :3], d_all[:, 3:]
+        return logits, d_n, d_c
+

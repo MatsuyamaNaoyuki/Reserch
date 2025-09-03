@@ -83,10 +83,51 @@ def align_B_on_A_n_cycles(seriesA, seriesB, a_mins, b_mins, k, n_cycles=10):
     return x_idx, A_win, B_on_A_win
 
 
-
+KEYS = ["sensor1", "sensor2", "sensor3"] 
 
 smalldata = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle")
+
+
+
+
+COLUMNS_TO_PLOT = [c for c in smalldata.columns
+                   if any(k.lower() in str(c).lower() for k in KEYS)]
+COLUMNS_TO_PLOT.sort()
+
+
+
+# 特定の列だけ抽出
+smalldata_sel = smalldata[COLUMNS_TO_PLOT]
+
+# Zスコア標準化
+smalldata_std = (smalldata_sel - smalldata_sel.mean(skipna=True)) / smalldata_sel.std(skipna=True)
+
+# 元の DataFrame に戻したい場合（置き換え）
+smalldata[COLUMNS_TO_PLOT] = smalldata_std
+
+
+
+
+
+
 bigdata = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle")
+
+COLUMNS_TO_PLOT = [c for c in bigdata.columns
+                   if any(k.lower() in str(c).lower() for k in KEYS)]
+COLUMNS_TO_PLOT.sort()
+
+
+
+# 特定の列だけ抽出
+bigdata_sel = bigdata[COLUMNS_TO_PLOT]
+
+# Zスコア標準化
+bigdata_std = (bigdata_sel - bigdata_sel.mean(skipna=True)) / bigdata_sel.std(skipna=True)
+
+# 元の DataFrame に戻したい場合（置き換え）
+bigdata[COLUMNS_TO_PLOT] = bigdata_std
+
+
 difdata = smalldata - bigdata 
 smalldata.columns = ["small" + col for col in smalldata.columns]
 bigdata.columns = ["big" + col for col in bigdata.columns]
@@ -132,18 +173,18 @@ print("間隔の最大値:", diffs[max_idx],
 
 
 
-# ===== 設定 =====
-PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\0818_tubefinger_kijun_rere20250820_173021.pickle"
-# KEYS = ["force"] 
-KEYS = ["sensor1","sensor2","sensor3"] 
-# KEYS = ["Mc"] 
-WINDOW = 5000          # 1画面で表示する点数
-STEP   = 5000           # ←→・ホイールで動くステップ幅（点）
-# =================
- # どれかを含む列を拾う
+# # ===== 設定 =====
+# PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\0818_tubefinger_kijun_rere20250820_173021.pickle"
+ 
+# # KEYS = ["sensor1","sensor2","sensor3"] 
+# KEYS = ["Mc5"] 
+# WINDOW = 5000          # 1画面で表示する点数
+# STEP   = 5000           # ←→・ホイールで動くステップ幅（点）
+# # =================
+#  # どれかを含む列を拾う
 
 
-# # データ読み込み
+# データ読み込み
 # df = pd.read_pickle(PATH)
 # df = pd.DataFrame(df).reset_index(drop=True)  # インデックスは0,1,2,...にする
 
@@ -151,7 +192,6 @@ COLUMNS_TO_PLOT = [c for c in df.columns
                    if any(k.lower() in str(c).lower() for k in KEYS)]
 COLUMNS_TO_PLOT.sort()
 
-# 存在チェック
 
 
 
