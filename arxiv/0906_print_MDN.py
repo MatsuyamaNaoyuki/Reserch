@@ -9,6 +9,8 @@ import numpy as np
 
 def culc_gosa(y_data, estimation_array):
     gosa = 0
+    myfunction.print_val(len(y_data))
+    myfunction.print_val(len(estimation_array))
     for i in range(len(y_data)):
         distance = np.linalg.norm(np.array(y_data[i])- np.array(estimation_array[i]))
         gosa = gosa + distance
@@ -39,23 +41,25 @@ def culc_currect(y_data, estimation_array):
     
 
 y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDN_selector\result20250829_154124.pickle")
+estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNnew\result20250909_132554.pickle")
 
-myfunction.print_val(estimation_array)
+
 no_contact_real = True
 contact_real = True
-no_contact_est = False
+no_contact_est = True
 contact_est = True
+myfunction.print_val(estimation_array)
+
 
 
 list_estimation_array = [t.cpu().tolist() for t in estimation_array]
 
-# list1 = [row[0] for row in list_estimation_array]  # shape: (6871, 3)
-# list2 = [row[1] for row in list_estimation_array]
+list1 = [row[0] for row in list_estimation_array]  # shape: (6871, 3)
+list2 = [row[1] for row in list_estimation_array]
+
 list_y_data = y_data[["Mc5x", "Mc5y", "Mc5z"]].values.tolist()
 
-culc_gosa(list_y_data, list_estimation_array)
-culc_currect(list_y_data, list_estimation_array)
+
 
 
 
@@ -70,17 +74,17 @@ y = ly[half::1]
 lz  = y_data['Mc5z'].to_list()
 z = lz[half::1]
 
-ex = [row[0]  for row in list_estimation_array[half::1]]
-ey = [row[1] for row in list_estimation_array[half::1]]
-ez = [row[2] for row in list_estimation_array[half::1]]
+ex = [row[0]  for row in list1]
+ey = [row[1] for row in list1]
+ez = [row[2] for row in list1]
 
 nx  = lx[:half:1]
 ny  = ly[:half:1]
 nz  = lz[:half:1]
 
-enx = [row[0]  for row in list_estimation_array[:half:1]]
-eny = [row[1] for row in list_estimation_array[:half:1]]
-enz = [row[2] for row in list_estimation_array[:half:1]]
+enx = [row[0]  for row in list2]
+eny = [row[1] for row in list2]
+enz = [row[2] for row in list2]
 
 min_len = min(len(x), len(nx), len(ex), len(enx))
 x, y, z = x[:min_len], y[:min_len], z[:min_len]

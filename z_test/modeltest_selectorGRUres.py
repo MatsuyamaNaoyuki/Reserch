@@ -74,14 +74,16 @@ def get_uncrrect_num(pred_num):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-MDNpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2\model.pth"
-selectorpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selectGRUresup\selector.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle"
+MDNpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_MDN\MDN\model.pth"
+selectorpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_MDN\selectorres\selector.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_MDN\mixhit_fortesttype.pickle"
 L = 16
 stride = 1
 touch_vis = True
 scatter_motor = True
 row_data_swith = True
+kijun = False
+seiki = True
 #-----------------------------------------------------------------------------------------------------------------
 
 input_dim = 3
@@ -102,33 +104,60 @@ mdn_scaler = myfunction.load_pickle(mdn_scaler_path)
 
 select_scaler_path = myfunction.find_pickle_files("scaler", os.path.dirname(selectorpath))
 select_scaler_data = myfunction.load_pickle(select_scaler_path)
-sel_x_mean = torch.tensor(select_scaler_data['x_mean'],device = device).float()
-sel_x_std = torch.tensor(select_scaler_data['x_std'],device = device).float()
-sel_y_mean = torch.tensor(select_scaler_data['y_mean'],device = device).float()
-sel_y_std = torch.tensor(select_scaler_data['y_std'],device = device).float()
-sel_fitA = select_scaler_data['fitA']
+if seiki == True:
+    sel_x_min = torch.tensor(select_scaler_data['x_min'],device = device).float()
+    sel_x_max = torch.tensor(select_scaler_data['x_max'],device=device).float()
+    sel_y_min = torch.tensor(select_scaler_data['y_min'],device = device).float()
+    sel_y_max = torch.tensor(select_scaler_data['y_max'],device=device).float()
+    mdn_x_min = torch.tensor(mdn_scaler['x_min'], device=device).float()
+    mdn_x_max = torch.tensor(mdn_scaler['x_max'], device=device).float()
+    mdn_y_min = torch.tensor(mdn_scaler['y_min'], device=device).float()
+    mdn_y_max = torch.tensor(mdn_scaler['y_max'], device=device).float()
+    sel_x_scale = sel_x_max - sel_x_min
+    sel_y_scale = sel_y_max - sel_y_min
+    mdn_x_scale = mdn_x_max - mdn_x_min
+    mdn_y_scale = mdn_y_max - mdn_y_min
+    mdn_x_min = mdn_x_min[:4]
+    mdn_x_scale = mdn_x_scale[:4] 
+    
+else:
 
-mdn_x_mean = torch.tensor(mdn_scaler['x_mean'], device=device).float()
-mdn_x_std = torch.tensor(mdn_scaler['x_std'], device=device).float()
-mdn_y_mean = torch.tensor(mdn_scaler['y_mean'], device=device).float()
-mdn_y_std = torch.tensor(mdn_scaler['y_std'], device=device).float()
+    sel_x_mean = torch.tensor(select_scaler_data['x_mean'],device = device).float()
+    sel_x_std = torch.tensor(select_scaler_data['x_std'],device = device).float()
+    sel_y_mean = torch.tensor(select_scaler_data['y_mean'],device = device).float()
+    sel_y_std = torch.tensor(select_scaler_data['y_std'],device = device).float()
+    mdn_x_mean = torch.tensor(mdn_scaler['x_mean'], device=device).float()
+    mdn_x_std = torch.tensor(mdn_scaler['x_std'], device=device).float()
+    mdn_y_mean = torch.tensor(mdn_scaler['y_mean'], device=device).float()
+    mdn_y_std = torch.tensor(mdn_scaler['y_std'], device=device).float()
+    mdn_x_mean = mdn_x_mean[:4]
+    mdn_x_std = mdn_x_std[:4]
+
+    if kijun:
+        sel_fitA = select_scaler_data['fitA']
 
 
-alphaA = torch.ones_like(sel_fitA.amp)
-xA_proc = Mydataset.apply_align_torch(x_data, sel_fitA, alphaA)
-rot3_raw, force3_raw, m9_raw = torch.split(xA_proc, [3,3,9], dim=1)
+if kijun:
+    alphaA = torch.ones_like(sel_fitA.amp)
+    x_data = Mydataset.apply_align_torch(x_data, sel_fitA, alphaA)
 
-mdn_x_mean = mdn_x_mean[:3]
-mdn_x_std = mdn_x_std[:3]
+rot3_raw, force3_raw, m9_raw = torch.split(x_data, [4,4,9], dim=1)
 
+if seiki:
+    t3_std_mdn = (rot3_raw.to(device) - mdn_x_min) / mdn_x_scale
+else:
+    t3_std_mdn = (rot3_raw.to(device) - mdn_x_mean) / mdn_x_std
 
-t3_std_mdn = (rot3_raw.to(device) - mdn_x_mean) / mdn_x_std
-
-m9_session_mean = m9_raw.mean(dim = 0, keepdim=True).to(device)
-sel_m9_mean = sel_x_mean[6:15].unsqueeze(0)
-m9_raw_shifted = m9_raw.to(device) + (sel_m9_mean - m9_session_mean)
-# m9_raw_shifted = m9_raw.to(device)
-m9_std_sel = (m9_raw_shifted - sel_m9_mean) / sel_x_std[6:15].unsqueeze(0)  # (N,9)
+# m9_session_mean = m9_raw.mean(dim = 0, keepdim=True).to(device)
+# sel_m9_mean = sel_x_mean[6:15].unsqueeze(0)
+# m9_raw_shifted = m9_raw.to(device) + (sel_m9_mean - m9_session_mean)
+m9_raw_shifted = m9_raw.to(device)
+if seiki:
+    m9_std_sel = (m9_raw_shifted - sel_x_min[8:17]) / sel_x_scale[8:17].unsqueeze(0) 
+else:
+    # m9_std_sel = (m9_raw_shifted - sel_m9_mean) / sel_x_std[6:15].unsqueeze(0) 
+    pass
+ # (N,9)
 
 type_end_list = myfunction.get_type_change_end(typedf)
 mag_seq, js = build_mag_sequences(m9_std_sel, type_end_list, L=L, stride=stride)
@@ -161,8 +190,15 @@ with torch.no_grad():
         t3 = use_std_rotate[i:i+1]
         m9i = mag_seq[i:i+1]
         pi, mu_std_mdn, sigma = model_MDN(t3)
-        mu_world = mu_std_mdn * mdn_y_std + mdn_y_mean
-        mu_std_sel = (mu_world - sel_y_mean) / sel_y_std
+        if seiki:
+            mu_world = mu_std_mdn * mdn_y_scale + mdn_y_min
+            mu_std_sel = (mu_world - sel_y_min) / sel_y_scale
+        else:
+            mu_world = mu_std_mdn * mdn_y_std + mdn_y_mean
+            mu_std_sel = (mu_world - sel_y_mean) / sel_y_std
+
+
+
         mupair = torch.cat([mu_std_sel[:,0,:], mu_std_sel[:,1,:]], dim=1)
 
         logits, d_n, d_c = model_select(m9i, mupair)   # (1,15)
@@ -181,8 +217,13 @@ with torch.no_grad():
         # 選ばれたμは“実スケール”で返す（可視化や保存はこちらが正しい）
         pred_y = ypair[0, pred_idx, :]            # (3,)
         unpred_y = ypair[0, un_pred_idx, :]
-        pred_world = pred_y * mdn_y_std + mdn_y_mean
-        unpred_world = unpred_y * mdn_y_std + mdn_y_mean
+        if seiki:
+            pred_world = pred_y * mdn_y_scale + mdn_y_min
+            unpred_world = unpred_y * mdn_y_scale + mdn_y_min
+
+        else:
+            pred_world = pred_y * mdn_y_std + mdn_y_mean
+            unpred_world = unpred_y * mdn_y_std + mdn_y_mean
         
         d_pred = torch.linalg.norm(pred_world - use_std_y[i])
         d_unpred = torch.linalg.norm(unpred_world - use_std_y[i])

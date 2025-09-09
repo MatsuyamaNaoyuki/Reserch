@@ -106,39 +106,64 @@ def make_sequence_tensor_stride(x, y, typedf, L, stride):
 
     return seq_x, seq_y, first_group_len  # ← 追加：最初のグループ長も返す
 
+def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, filepath):
+    checkpoint = {
+        'epoch': epoch,
+        'model_state_dict': model.state_dict(),
+        'optimizer_state_dict': optimizer.state_dict(),
+        'record_train_loss': record_train_loss,
+        'record_test_loss': record_test_loss,
+    }
+    torch.save(checkpoint, filepath)
+    print(f"Checkpoint saved at epoch {epoch}.")
 
-def make_touch_hist():
-    point4_array1 = dis_array1[:, 3]
-    point4_array2 = dis_array2[:, 3]
 
-    # ヒストグラム描画
-    plt.figure(figsize=(8, 5))
-    plt.hist(point4_array1, bins='auto', alpha=0.6, label='dis_array1 (first part)', edgecolor='black')
-    plt.hist(point4_array2, bins='auto', alpha=0.6, label='dis_array2 (second part)', edgecolor='black')
+def build_motor_seq(rot3_std, type_end_list, L=16, stride=1):
+    rot3_std = rot3_std.to(device)
+    type_end_list = type_end_list.tolist()
+    type_end_list.insert(0, 0)
+    total_span = (L - 1) * stride
 
-    # ラベルとタイトル
-    plt.xlabel('Distance Error (Point 4)')
-    plt.ylabel('Frequency')
-    plt.title('Histogram of Point 4 Errors: dis_array1 vs dis_array2')
-    plt.legend()
-    plt.grid(True)
-    plt.tight_layout()
-    plt.show()
+    seq_rot, js_all = [], []
+    nan_mask = torch.isnan(rot3_std).any(dim=1).to(device)
 
-def to_numpy_safe(t):
-    if isinstance(t, torch.Tensor):
-        return t.detach().cpu().numpy()
-    else:
-        return np.asarray(t)
+    for i in range(len(type_end_list)-1):
 
+        start = type_end_list[i] + total_span
+        end   = type_end_list[i+1]
+        if end <= start:
+            continue
+
+        js = torch.arange(start, end, device=device)  # 現在時刻の位置
+        # 過去Lフレームのインデックスを作る
+        rel = torch.arange(L-1, -1, -1, device=device) * stride   
+         
+        idx = js.unsqueeze(1) - rel    # [num, L]
+        # ここで NaN を含む行を除外（必要なら）
+
+        valid_mask = ~nan_mask[idx].any(dim=1)
+
+
+        idx = idx[valid_mask]
+        js = js[valid_mask]
+
+
+        seq_rot.append(rot3_std[idx])  # [num, L, 9]
+        js_all.append(js)
+
+    seq_rot = torch.cat(seq_rot, dim=0) if len(seq_rot)>0 else torch.empty(0, L, 3, device=device)
+    js_all  = torch.cat(js_all, dim=0)  if len(js_all)>0  else torch.empty(0, device=device, dtype=torch.long)
+    # rot3_std/js_all からMDNを呼び、y_std/js_all を教師に使うため、js_allも返す
+    return seq_rot, js_all
 
 
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNnew\model.pth"
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNGRU\model.pth"
 filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle"
-
+L = 32
+stride = 1
 touch_vis = True
 scatter_motor = True
 row_data_swith = True
@@ -196,6 +221,11 @@ mask = torch.isfinite(x_change).all(dim=1) & torch.isfinite(y_last3).all(dim=1)
 rotate_data_clean = x_change[mask]
 y_last3_clean     = y_last3[mask]
 y_last3_clean = y_last3_clean.to(device)
+
+myfunction.print_val(rotate_data_clean.size())
+type_end_list = myfunction.get_type_change_end(typedf)
+rot_seq = build_motor_seq(rotate_data_clean, type_end_list, L=L, stride=stride)
+rot_seq = rot_seq[0]
 # rotate_data_clean ,force3_raw, m9_raw = torch.split(rotate_data_clean, [3,3,9], dim=1)
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
@@ -212,11 +242,12 @@ mu_list = []
 
 
 
-for i in range(len(rotate_data_clean)):
+for i in range(len(rot_seq)):
 
     sample_idx = i  # 推論したいサンプルのインデックス
-    single_sample = rotate_data_clean[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
+    single_sample = rot_seq[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     single_sample = single_sample.to(device)
+
     with torch.no_grad():  # 勾配計算を無効化
         pi, mu, sigma = model_from_script(single_sample)
     if seiki:

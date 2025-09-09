@@ -572,3 +572,32 @@ class SelectorGRUdelta(nn.Module):
         d_n, d_c = d_all[:, :3], d_all[:, 3:]
         return logits, d_n, d_c
 
+
+class MDNGRU(nn.Module):
+    def __init__(self, in_dim = 3, rnn_hidden = 128, mlp_hidden = 128, num_layers = 1, dropout = 0.0):
+        super().__init__()
+        self.gru = nn.GRU(in_dim, rnn_hidden, num_layers=num_layers, batch_first=True, dropout=dropout)
+        self.head = nn.Sequential(
+            nn.Linear(rnn_hidden, mlp_hidden),
+            nn.ReLU(),
+            nn.Linear(mlp_hidden, mlp_hidden),
+            nn.ReLU()
+        )
+        self.out_pi = nn.Linear(mlp_hidden, 2)
+        self.mu1 = nn.Linear(mlp_hidden, 3)
+        self.mu2 = nn.Linear(mlp_hidden, 3)
+        self.s1  = nn.Linear(mlp_hidden, 3)
+        self.s2  = nn.Linear(mlp_hidden, 3)
+
+    def forward(self, x_seq):
+        _, hT = self.gru(x_seq)
+        h = self.head(hT[-1])
+        pi = torch.softmax(self.out_pi(h), dim = -1)
+        m1,m2 = self.mu1(h), self.mu2(h)
+        s1,s2 = self.s1(h), self.s2(h)
+        sigma1 = F.softplus(s1) + 1e-3
+        sigma2 = F.softplus(s2) + 1e-3
+        mu = torch.stack([m1, m2], dim = 1)
+        sigma = torch.stack([sigma1, sigma2], dim = 1)
+        return pi, mu, sigma
+    

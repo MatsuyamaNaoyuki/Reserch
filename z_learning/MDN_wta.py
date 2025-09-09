@@ -8,6 +8,7 @@ from myclass import Mydataset
 from torch.utils.tensorboard import SummaryWriter
 import os 
 from tqdm import tqdm
+import math
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
@@ -33,20 +34,41 @@ class MDN2(nn.Module):
         sigma = F.softplus(s) + 1e-3
         return pi ,mu,sigma
     
+def mdn_component_logprob(x, mu, sigma):
+    # x: (B,3), mu/sigma: (B,3)
+    D = x.size(-1)
+    log_norm = -0.5 * D * math.log(2*math.pi)
+    inv = -0.5 * (((x - mu)/sigma)**2).sum(dim=-1)
+    log_det = - torch.log(sigma).sum(dim=-1)
+    return log_norm + inv + log_det   # (B,)
 
 #損失関数の定義
 def mdn_nll(pi, mu, sigma, target):
-    B, K, _ =mu.shape
-    x = target.unsqueeze(1).expand(B,K,3)
+    B, K, D =mu.shape
+    x = target.unsqueeze(1).expand(B,K,D)
 
-    comp_logprob = -0.5 * (((x - mu)/sigma)**2).sum(dim=-1) \
-                   - sigma.log().sum(dim=-1) \
-                   - 0.5*3*torch.log(torch.tensor(2*3.141592653589793, device=mu.device))
+    comp = mdn_component_logprob(x, mu, sigma)
+    log_pi = torch.log(pi.clamp_min(1e-8))
     
-    logprob = torch.logsumexp(torch.log(pi + 1e-8) + comp_logprob, dim=1)
+    logprob = torch.logsumexp(log_pi + comp, dim=1)
     return(-logprob).mean()
-    
-def train(model, train_loader, optimizer, criterion):
+
+def wta_nll(mu, sigma, target):
+    d1 = ((mu[:, 0,:] - target)** 2).sum(dim=1)
+    d2 = ((mu[:, 1,:] - target)** 2).sum(dim=1)
+    pick = (d2 < d1).long()
+
+    logp1 = mdn_component_logprob(target, mu[:, 0, :], sigma[:, 0, :])
+    logp2 = mdn_component_logprob(target, mu[:, 1, :], sigma[:, 1, :])
+    logp = torch.where(pick ==0, logp1, logp2)
+    return(-logp).mean()
+
+def best_of2_mse(mu, target):
+    d1 = ((mu[:, 0,:] - target)** 2).sum(dim=1)
+    d2 = ((mu[:, 1,:] - target)** 2).sum(dim=1)
+    return torch.minimum(d1,d2).mean()
+
+def train(model, train_loader, optimizer):
     model.train()
     loss_mean = 0
 
@@ -54,9 +76,16 @@ def train(model, train_loader, optimizer, criterion):
         rotate_batch = rotate_batch.to(device).float()
         xyz_batch = xyz_batch.to(device).float()
         pi, mu,sigma = model(rotate_batch)
-        loss = criterion(pi, mu, sigma, xyz_batch)
+ 
+        bo2 = best_of2_mse(mu, xyz_batch)
+        nll_wta = wta_nll(mu, sigma, xyz_batch)
+        
+        loss = nll_wta + 0.1*bo2
+
+
         optimizer.zero_grad()
         loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), 5.0)
         optimizer.step()
         loss_mean += loss.item() * rotate_batch.size(0)
 
@@ -64,7 +93,7 @@ def train(model, train_loader, optimizer, criterion):
 
     return loss_mean
 
-def test(model, test_loader, criterion):
+def test(model, test_loader):
     model.eval()
     loss_mean = 0
     pi_dev_sum = 0.0
@@ -78,7 +107,12 @@ def test(model, test_loader, criterion):
             rotate_batch = rotate_batch.to(device, non_blocking = True)
             xyz_batch = xyz_batch.to(device, non_blocking = True)
             pi, mu, sigma = model(rotate_batch)
-            loss = criterion(pi, mu, sigma, xyz_batch)
+
+            bo2 = best_of2_mse(mu, xyz_batch)
+            nll_wta = wta_nll(mu, sigma, xyz_batch)
+            
+            loss = nll_wta + 0.1*bo2
+
             loss_mean += loss.item() * rotate_batch.size(0)
 
             pi_dev_sum += torch.abs(pi[:, 0] - 0.5).mean().item()
@@ -114,14 +148,14 @@ def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss
 
 def main():
     #-----------------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\temp"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNnew"
     filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
     resume_training = False   # 再開したい場合は True にする
     kijun = False
     seiki = True
     #-----------------------------------------------------------------------------------------------------------------------
 
-    input_dim = 4
+    input_dim = 3
     num_epochs = 500
     batch_size = 128
     r = 0.8
@@ -129,7 +163,6 @@ def main():
     patience_scheduler = 10
 
     model = MDN2(input_dim=input_dim).to(device)
-    criterion = mdn_nll
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=patience_scheduler)
 
@@ -214,7 +247,7 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=1, persistent_workers=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=1, persistent_workers=True)
 
-    save_test(test_dataset,result_dir)
+
     start_epoch = 0
     record_train_loss = []
     record_test_loss = []
@@ -228,8 +261,8 @@ def main():
 
     try:
         for epoch in range(start_epoch, num_epochs):
-            train_loss = train(model, train_loader, optimizer, criterion)
-            test_loss, pi_dev, sigma_mean, sigma_min = test(model, test_loader, criterion)
+            train_loss = train(model, train_loader, optimizer)
+            test_loss, pi_dev, sigma_mean, sigma_min = test(model, test_loader)
             record_train_loss.append(train_loss)
             record_test_loss.append(test_loss)
             scheduler.step(test_loss)

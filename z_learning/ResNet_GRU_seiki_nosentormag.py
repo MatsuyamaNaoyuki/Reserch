@@ -157,8 +157,8 @@ def main():
     L = 32 
     stride = 1
 
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\GRUseikika_nosentor"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\GRU_seikika_nosentor"
+    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
     resume_training = False   # 再開したい場合は True にする
 
 
@@ -171,7 +171,7 @@ def main():
     # ハイパーパラメータ
 
     input_dim = 12
-    output_dim = 4
+    output_dim = 3
     learning_rate = 0.001
     num_epochs = 500
     batch_size = 128

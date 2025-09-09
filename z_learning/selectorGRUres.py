@@ -58,8 +58,8 @@ def build_mag_sequences(mag9_std,type_end_list, L=16, stride=1):
 
     seq_mag, js_all = [], []
     nan_mask = torch.isnan(mag9_std).any(dim=1)
-    nan_rows = nan_mask.nonzero(as_tuple=True)[0].tolist()
-    nan_rows_set = set(nan_rows) 
+
+
     # rot3_std, y_std は“現在”用のインデックス js で拾うのでここでは触らない
 
     for i in range(len(type_end_list)-1):
@@ -223,12 +223,13 @@ def test(selector, test_loader,class_weight, alpha = 0.2, gamma = 2e-4, delta= 1
 
 def main():
     #変える部分-----------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selectGRUresup"
-    modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2\model.pth"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
-    L = 16
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_MDN\selectorres"
+    modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_MDN\MDN\model.pth"
+    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_MDN\mixhit_fortraintypenan20250715_163007.pickle"
     stride = 1
-
+    L = 16
+    kijun = False
+    seiki = True
     #-----------------------------------------------------------------------------------------------------------------
     os.makedirs(result_dir, exist_ok=True)
     num_epochs = 500
@@ -245,23 +246,58 @@ def main():
     x_data, y_data, typedf = myfunction.read_pickle_to_torch(filename, motor_angle=True, motor_force=True, magsensor=True)
     y_last3 = y_data[:, -3:]
 
-    base_dir = os.path.dirname(result_dir)
-    kijun_dir = myfunction.find_pickle_files("kijun", base_dir)
-    kijundata, _ ,_= myfunction.read_pickle_to_torch(kijun_dir,motor_angle=True, motor_force=True, magsensor=True)
-
-    std_xdata, xdata_mean, xdata_std ,fitA= Mydataset.align_to_standardize_all(kijundata, x_data)
-
-    y_mean, y_std = Mydataset.fit_standardizer_torch(y_last3)
-    std_y_data = Mydataset.apply_standardize_torch(y_last3, y_mean, y_std)
 
 
-    scaler_data = {
-        'x_mean': xdata_mean.cpu().numpy(),  # GPUからCPUへ移動してnumpy配列へ変換
-        'x_std': xdata_std.cpu().numpy(),
-        'y_mean': y_mean.cpu().numpy(),
-        'y_std': y_std.cpu().numpy(),
-        'fitA': fitA
-    }
+
+
+    if kijun == True:
+        base_dir = os.path.dirname(result_dir)
+        kijun_dir = myfunction.find_pickle_files("kijun", base_dir)
+
+        kijunx, _ ,_= myfunction.read_pickle_to_torch(kijun_dir,motor_angle=True, motor_force=False, magsensor=False)
+        fitA = Mydataset.fit_calibration_torch(kijunx)
+        alphaA = torch.ones_like(fitA.amp)
+        xA_proc = Mydataset.apply_align_torch(x_data, fitA, alphaA)
+
+        if seiki == True:
+            x_max, x_min, x_scale = Mydataset.fit_normalizer_torch(xA_proc)
+            std_xdata = Mydataset.apply_normalize_torch(xA_proc, x_min, x_scale)
+        else:
+            x_mean, x_std = Mydataset.fit_standardizer_torch(xA_proc)
+            std_xdata = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
+    else:
+        if seiki == True:
+            x_max, x_min, x_scale = Mydataset.fit_normalizer_torch(x_data)
+            std_xdata = Mydataset.apply_normalize_torch(x_data, x_min, x_scale)
+        else:
+            x_mean, x_std = Mydataset.fit_standardizer_torch(x_data)
+            std_xdata = Mydataset.apply_standardize_torch(x_data, x_mean, x_std)
+
+
+    if seiki == True:
+        y_max, y_min, y_scale = Mydataset.fit_normalizer_torch(y_last3)
+        std_y_data = Mydataset.apply_normalize_torch(y_last3, y_min,y_scale)
+    else:
+        y_mean, y_std = Mydataset.fit_standardizer_torch(y_last3)
+        std_y_data = Mydataset.apply_standardize_torch(y_last3, y_mean, y_std)
+
+
+
+    if seiki == True:
+        scaler_data = {
+            'x_min': x_min.cpu().numpy(),
+            'x_max': x_max.cpu().numpy(),
+            'y_min': y_min.cpu().numpy(),
+            'y_max': y_max.cpu().numpy(),
+        }
+    else:
+        scaler_data = {
+            'x_mean': x_mean.cpu().numpy(),  # GPUからCPUへ移動してnumpy配列へ変換
+            'x_std': x_std.cpu().numpy(),
+            'y_mean': y_mean.cpu().numpy(),
+            'y_std': y_std.cpu().numpy(),
+            'fitA': fitA
+        }
 
     scaler_pass = os.path.join(result_dir, "scaler")
     myfunction.wirte_pkl(scaler_data, scaler_pass)
@@ -270,7 +306,7 @@ def main():
 
     mask = torch.isfinite(x_data).all(dim=1) & torch.isfinite(y_last3).all(dim=1)
 
-    std_rotate_data, std_force_data, std_mag_data = torch.split(std_xdata, [3, 3, 9], dim=1)
+    std_rotate_data, std_force_data, std_mag_data = torch.split(std_xdata, [4, 4, 9], dim=1)
             
 
     type_end_list = myfunction.get_type_change_end(typedf)

@@ -22,13 +22,34 @@ def make_xramp_and_reframp(xdata):
 def make_xneutral(xdata):
     motor = xdata[:, 0:3].float()
     rise_mask = (motor[:, 0] < 1) & (motor[:, 1] < 1) & (motor[:, 2] < 1)
+    rise_mask = trim_mask(rise_mask)
     x_neutral = xdata[rise_mask]
-
     return x_neutral
+
+def trim_mask(rise_mask:torch.Tensor, max_gap:int = 10):
+    result = torch.zeros_like(rise_mask, dtype=torch.bool)
+    found_true = False
+    gap = 0
+
+    for i, val in enumerate(rise_mask):
+        if val:
+            result[i] = True
+            found_true = True
+            gap = 0
+
+        elif found_true:
+            gap = gap + 1
+            if gap > max_gap:
+                break
+
+    return result
+
 
 # def fit_calibration_torch(x_neutral:torch.Tensor, x_ramp:torch.Tensor
 #                           , ref_ramp:torch.Tensor|None=None, q_low:float=0.05, q_hi:float=0.95)->Calibfit:
     
+
+#ニュートラルの位置、レンジ等を求めてる
 def fit_calibration_torch(calbedata: torch.Tensor, q_low:float=0.05, q_hi:float=0.95)->Calibfit:
     x_neutral = make_xneutral(calbedata)
     mu_neutral = torch.nanmean(x_neutral, dim=0)
@@ -89,9 +110,21 @@ def fit_standardizer_torch(x_train: torch.Tensor):
     sd = torch.where(sd < 1e-8, torch.ones_like(sd), sd)
     return mu, sd
 
+
+def fit_normalizer_torch(x_train: torch.Tensor):
+    mask = torch.isnan(x_train)
+    x_masked = x_train.clone()
+    x_masked[mask] = x_train.nanmean()
+    max, _ = torch.max(x_masked, dim = 0)
+    min,_ = torch.min(x_masked, dim = 0)
+    scale = max - min
+    return max, min, scale
+
 def apply_standardize_torch(x: torch.Tensor, mu:torch.Tensor, sd:torch.Tensor):
     return (x-mu) / sd
 
+def apply_normalize_torch(x: torch.Tensor, min:torch.Tensor, scale:torch.Tensor):
+    return (x-min) / scale
 def align_to_standardize_all(kijundata, data):
 
     fitdata = fit_calibration_torch(kijundata)

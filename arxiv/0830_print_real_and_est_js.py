@@ -9,14 +9,23 @@ import numpy as np
 
 def culc_gosa(y_data, estimation_array):
     gosa = 0
-    myfunction.print_val(len(y_data))
-    myfunction.print_val(len(estimation_array))
+    gosamae = 0
+    gosaato = 0
+    half = len(y_data)//2
     for i in range(len(y_data)):
         distance = np.linalg.norm(np.array(y_data[i])- np.array(estimation_array[i]))
         gosa = gosa + distance
-    
+        if i < half:
+            gosamae = gosamae + distance
+        else:
+            gosaato = gosaato + distance
+
     gosa = gosa / len(y_data)
+    gosaato = gosaato / half
+    gosamae = gosamae / half
     myfunction.print_val(gosa)
+    myfunction.print_val(gosaato)
+    myfunction.print_val(gosamae)
 
 def culc_currect(y_data, estimation_array):
     half = len(y_data) // 2
@@ -40,9 +49,11 @@ def culc_currect(y_data, estimation_array):
     myfunction.print_val(currect)
     
 
-y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selectGRUresup\result20250830_220959.pickle")
-js = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selectGRUresup\js20250903_165552.pickle")
+y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle")
+estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDN_selector\result20250905_150523.pickle")
+js = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\GRU_seikika\js20250903_133235.pickle")
+
+
 
 # y_data_usiro = y_data.loc[y_data["type"].eq(1)].copy()
 
@@ -62,11 +73,13 @@ y_data = y_data.iloc[idx]
 
 no_contact_real = True
 contact_real = True
-no_contact_est = False
-contact_est = True
+no_contact_est = True
+contact_est = False
 
 
 list_estimation_array = [t.cpu().tolist() for t in estimation_array]
+
+
 
 # list1 = [row[0] for row in list_estimation_array]  # shape: (6871, 3)
 # list2 = [row[1] for row in list_estimation_array]

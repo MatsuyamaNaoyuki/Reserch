@@ -5,34 +5,15 @@ from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Subset
 from myclass import myfunction
 from myclass import Mydataset
+from myclass import MyModel
 from torch.utils.tensorboard import SummaryWriter
 import os 
 from tqdm import tqdm
 
+
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-class MDN2(nn.Module):
-    def __init__(self, input_dim =3,  hidden = 128):
-        super().__init__()
-        self.backbone = nn.Sequential(
-            nn.Linear(input_dim, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, hidden),
-            nn.ReLU()
-        )
-        self.out_pi = nn.Linear(hidden, 2)
-        self.out_mu = nn.Linear(hidden, 2*3)
-        self.out_s = nn.Linear(hidden, 2*3)
-    
-    def forward(self, rotate_seq):
-        h = self.backbone(rotate_seq)
-        pi_logit = self.out_pi(h)
-        pi = torch.softmax(pi_logit, dim = -1)
-        mu = self.out_mu(h).view(-1, 2,3)
-        s = self.out_s(h).view(-1,2,3)
-        sigma = F.softplus(s) + 1e-3
-        return pi ,mu,sigma
-    
+
 
 #損失関数の定義
 def mdn_nll(pi, mu, sigma, target):
@@ -96,10 +77,7 @@ def test(model, test_loader, criterion):
 
 
 
-def save_test(test_dataset, result_dir):
-    test_indices = test_dataset.indices  # 添え字のみ取得
-    test_indices_path = os.path.join(result_dir, "test_indices")
-    myfunction.wirte_pkl(test_indices, test_indices_path)
+
 
 def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, filepath):
     checkpoint = {
@@ -112,23 +90,65 @@ def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss
     torch.save(checkpoint, filepath)
     print(f"Checkpoint saved at epoch {epoch}.")
 
+def build_motor_seq(rot3_std, type_end_list, L=16, stride=1):
+    rot3_std = rot3_std.to(device)
+    type_end_list = type_end_list.tolist()
+    type_end_list.insert(0, 0)
+    total_span = (L - 1) * stride
+
+    seq_rot, js_all = [], []
+    nan_mask = torch.isnan(rot3_std).any(dim=1).to(device)
+
+    for i in range(len(type_end_list)-1):
+
+        start = type_end_list[i] + total_span
+        end   = type_end_list[i+1]
+        if end <= start:
+            continue
+
+        js = torch.arange(start, end, device=device)  # 現在時刻の位置
+        # 過去Lフレームのインデックスを作る
+        rel = torch.arange(L-1, -1, -1, device=device) * stride   
+         
+        idx = js.unsqueeze(1) - rel    # [num, L]
+        # ここで NaN を含む行を除外（必要なら）
+
+        valid_mask = ~nan_mask[idx].any(dim=1)
+
+
+        idx = idx[valid_mask]
+        js = js[valid_mask]
+
+
+        seq_rot.append(rot3_std[idx])  # [num, L, 9]
+        js_all.append(js)
+
+    seq_rot = torch.cat(seq_rot, dim=0) if len(seq_rot)>0 else torch.empty(0, L, 3, device=device)
+    js_all  = torch.cat(js_all, dim=0)  if len(js_all)>0  else torch.empty(0, device=device, dtype=torch.long)
+    # rot3_std/js_all からMDNを呼び、y_std/js_all を教師に使うため、js_allも返す
+    return seq_rot, js_all
+
+
+
 def main():
     #-----------------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\temp"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNGRU"
     filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
+    stride = 1
+    L = 32
     resume_training = False   # 再開したい場合は True にする
     kijun = False
     seiki = True
     #-----------------------------------------------------------------------------------------------------------------------
 
-    input_dim = 4
+    input_dim = 3
     num_epochs = 500
     batch_size = 128
     r = 0.8
     patience_stop = 30
     patience_scheduler = 10
 
-    model = MDN2(input_dim=input_dim).to(device)
+    model = MyModel.MDNGRU(in_dim=input_dim).to(device)
     criterion = mdn_nll
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=patience_scheduler)
@@ -175,12 +195,15 @@ def main():
     y_last3_clean     = y_last3[mask]
 
 
-    N = rotate_data_clean.size(0)
+    type_end_list = myfunction.get_type_change_end(typedf)
+    rot_seq, js = build_motor_seq(rotate_data_clean, type_end_list, L=L, stride=stride)
+
+    N = rot_seq.size(0)
     myfunction.print_val(N)
     perm = torch.randperm(N)
     n_train = int(N * r)
     idx_tr, idx_te = perm[:n_train], perm[n_train:]
-    rotate_data_clean_tr, rotate_data_clean_te = rotate_data_clean[idx_tr], rotate_data_clean[idx_te]
+    rot_seq_tr, rot_seq_te = rot_seq[idx_tr], rot_seq[idx_te]
     y_last3_clean_tr, y_last3_clean_te =  y_last3_clean[idx_tr], y_last3_clean[idx_te]
 
 
@@ -209,12 +232,12 @@ def main():
 
 
 
-    train_dataset = torch.utils.data.TensorDataset(rotate_data_clean_tr.cpu(),y_last3_clean_tr.cpu())
-    test_dataset = torch.utils.data.TensorDataset(rotate_data_clean_te.cpu(),y_last3_clean_te.cpu())
+    train_dataset = torch.utils.data.TensorDataset(rot_seq_tr.cpu(),y_last3_clean_tr.cpu())
+    test_dataset = torch.utils.data.TensorDataset(rot_seq_te.cpu(),y_last3_clean_te.cpu())
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=1, persistent_workers=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=1, persistent_workers=True)
 
-    save_test(test_dataset,result_dir)
+
     start_epoch = 0
     record_train_loss = []
     record_test_loss = []

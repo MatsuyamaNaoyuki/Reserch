@@ -12,10 +12,10 @@ from tqdm import tqdm
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class MDN2(nn.Module):
-    def __init__(self, hidden = 128):
+    def __init__(self, input_dim =3,  hidden = 128):
         super().__init__()
         self.backbone = nn.Sequential(
-            nn.Linear(3, hidden),
+            nn.Linear(input_dim, hidden),
             nn.ReLU(),
             nn.Linear(hidden, hidden),
             nn.ReLU()
@@ -114,19 +114,21 @@ def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss
 
 def main():
     #-----------------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\temp"
+    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
     resume_training = False   # 再開したい場合は True にする
+    kijun = False
+    seiki = True
     #-----------------------------------------------------------------------------------------------------------------------
 
-    input_dim = 3
+    input_dim = 4
     num_epochs = 500
     batch_size = 128
     r = 0.8
     patience_stop = 30
     patience_scheduler = 10
 
-    model = MDN2().to(device)
+    model = MDN2(input_dim=input_dim).to(device)
     criterion = mdn_nll
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=patience_scheduler)
@@ -135,64 +137,87 @@ def main():
     y_last3 = y_data[:, -3:]
 
 
-    base_dir = os.path.dirname(result_dir)
-    kijun_dir = myfunction.find_pickle_files("kijun", base_dir)
+    if kijun == True:
+        base_dir = os.path.dirname(result_dir)
+        kijun_dir = myfunction.find_pickle_files("kijun", base_dir)
 
-    kijunx, _ ,_= myfunction.read_pickle_to_torch(kijun_dir,motor_angle=True, motor_force=False, magsensor=False)
-    fitA = Mydataset.fit_calibration_torch(kijunx)
-    alphaA = torch.ones_like(fitA.amp)
-    xA_proc = Mydataset.apply_align_torch(rotate_data, fitA, alphaA)
+        kijunx, _ ,_= myfunction.read_pickle_to_torch(kijun_dir,motor_angle=True, motor_force=False, magsensor=False)
+        fitA = Mydataset.fit_calibration_torch(kijunx)
+        alphaA = torch.ones_like(fitA.amp)
+        xA_proc = Mydataset.apply_align_torch(rotate_data, fitA, alphaA)
+
+        if seiki == True:
+            x_max, x_min, x_scale = Mydataset.fit_normalizer_torch(xA_proc)
+            rotate_data = Mydataset.apply_normalize_torch(xA_proc, x_min, x_scale)
+        else:
+            x_mean, x_std = Mydataset.fit_standardizer_torch(xA_proc)
+            rotate_data = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
+    else:
+        if seiki == True:
+            x_max, x_min, x_scale = Mydataset.fit_normalizer_torch(rotate_data)
+            rotate_data = Mydataset.apply_normalize_torch(rotate_data, x_min, x_scale)
+        else:
+            x_mean, x_std = Mydataset.fit_standardizer_torch(rotate_data)
+            rotate_data = Mydataset.apply_standardize_torch(rotate_data, x_mean, x_std)
 
 
-    x_mean, x_std = Mydataset.fit_standardizer_torch(xA_proc)
-    rotate_data = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
+    if seiki == True:
+        y_max, y_min, y_scale = Mydataset.fit_normalizer_torch(y_last3)
+        y_last3 = Mydataset.apply_normalize_torch(y_last3, y_min,y_scale)
+    else:
+        y_mean, y_std = Mydataset.fit_standardizer_torch(y_last3)
+        y_last3 = Mydataset.apply_standardize_torch(y_last3, y_mean, y_std)
 
-    y_mean, y_std = Mydataset.fit_standardizer_torch(y_last3)
-    y_last3 = Mydataset.apply_standardize_torch(y_last3, y_mean, y_std)
 
 
     mask = torch.isfinite(rotate_data).all(dim=1) & torch.isfinite(y_last3).all(dim=1)
     rotate_data_clean = rotate_data[mask]
     y_last3_clean     = y_last3[mask]
-    dataset = torch.utils.data.TensorDataset(rotate_data_clean, y_last3_clean)
 
-    scaler_data = {
-        'x_mean': x_mean.cpu().numpy(),  # GPUからCPUへ移動してnumpy配列へ変換
-        'x_std': x_std.cpu().numpy(),
-        'y_mean': y_mean.cpu().numpy(),
-        'y_std': y_std.cpu().numpy(),
-        'fitA': fitA
-    }
+
+    N = rotate_data_clean.size(0)
+    myfunction.print_val(N)
+    perm = torch.randperm(N)
+    n_train = int(N * r)
+    idx_tr, idx_te = perm[:n_train], perm[n_train:]
+    rotate_data_clean_tr, rotate_data_clean_te = rotate_data_clean[idx_tr], rotate_data_clean[idx_te]
+    y_last3_clean_tr, y_last3_clean_te =  y_last3_clean[idx_tr], y_last3_clean[idx_te]
+
+
+
+
+    if seiki == True:
+        scaler_data = {
+            'x_min': x_min.cpu().numpy(),
+            'x_max': x_max.cpu().numpy(),
+            'y_min': y_min.cpu().numpy(),
+            'y_max': y_max.cpu().numpy(),
+            # 'fitA': fitA
+        }
+    else:
+        scaler_data = {
+            'x_mean': x_mean.cpu().numpy(),  # GPUからCPUへ移動してnumpy配列へ変換
+            'x_std': x_std.cpu().numpy(),
+            'y_mean': y_mean.cpu().numpy(),
+            'y_std': y_std.cpu().numpy(),
+            'fitA': fitA
+        }
 
     scaler_pass = os.path.join(result_dir, "scaler")
+    myfunction.wirte_pkl(scaler_data, scaler_pass)
     checkpoint_path = os.path.join(result_dir, "3d_checkpoint.pth")
 
-    if resume_training and os.path.exists(checkpoint_path):
-        test_indices_path = myfunction.find_pickle_files("test_indices", result_dir)
-        test_indices = myfunction.load_pickle(test_indices_path)
-        all_indices = set(range(len(dataset)))
-        test_indices = set(test_indices)  # Set に変換（高速化）
-        train_indices = list(all_indices - test_indices)  # 差分を取る
-        train_dataset = Subset(dataset, train_indices)
-        test_dataset = Subset(dataset, list(test_indices))  
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True,pin_memory=True, num_workers=0, persistent_workers=False)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=0, persistent_workers=False)
-        checkpoint = torch.load(checkpoint_path)
-        model.load_state_dict(checkpoint['model_state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-        start_epoch = checkpoint['epoch'] + 1
-        record_train_loss = checkpoint['record_train_loss']
-        record_test_loss = checkpoint['record_test_loss']
-        print(f"Resuming training from epoch {start_epoch}.")
-    else:
-        train_dataset, test_dataset = torch.utils.data.random_split(dataset, [r,1-r],generator=torch.Generator().manual_seed(0))
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=1, persistent_workers=True)
-        test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=1, persistent_workers=True)
-        myfunction.wirte_pkl(scaler_data, scaler_pass)
-        save_test(test_dataset,result_dir)
-        start_epoch = 0
-        record_train_loss = []
-        record_test_loss = []
+
+
+    train_dataset = torch.utils.data.TensorDataset(rotate_data_clean_tr.cpu(),y_last3_clean_tr.cpu())
+    test_dataset = torch.utils.data.TensorDataset(rotate_data_clean_te.cpu(),y_last3_clean_te.cpu())
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=1, persistent_workers=True)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=1, persistent_workers=True)
+
+    save_test(test_dataset,result_dir)
+    start_epoch = 0
+    record_train_loss = []
+    record_test_loss = []
 
     log_dir = os.path.join(result_dir, "logs")
     writer = SummaryWriter(log_dir=log_dir)
