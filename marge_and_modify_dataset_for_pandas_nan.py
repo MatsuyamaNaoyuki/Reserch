@@ -4,14 +4,7 @@ from myclass import myfunction
 import pandas as pd
 import datetime, os, csv
 
-#時刻も消して[222/222]→[222,222]
-def mag_data_change(row):
-    row = delete_date(row)
-    if row[0] == '':
-        return []
-    split_value = row[0].split('/')
-    # split_value = split_value[1:]
-    return split_value
+
 
 #時刻消さずに[時刻,"222/222"]->[時刻,222,222]
 def mag_data_change2(row):
@@ -22,50 +15,6 @@ def mag_data_change2(row):
     row.extend(split_value)
     return row
 
-def delete_date(row):
-    copyrow = row.copy()
-    copyrow.pop(0)
-    return copyrow
-
-def data_marge_v1(motiondata, motordata, magsensor):
-    
-    margedata = []
-    for motionrow in motiondata:
-        one_dataset = []
-
-
-        for motorrow in motordata:
-            temprow = motorrow
-            if motorrow[0] > motionrow[0]:
-                afterdiff = motorrow[0] - motionrow[0]
-                beforediff =motionrow[0] - temprow[0]
-                if afterdiff < beforediff:
-                    motorrow = delete_date(motorrow)
-                    one_dataset.extend(motorrow)
-                else:
-                    temprow = delete_date(temprow)
-                    one_dataset.extend(temprow)
-                break
-            temprow = motorrow
-        for magrow in magsensor:
-            temprow = magrow
-            if magrow[0] > motionrow[0]:
-                afterdiff = magrow[0] - motionrow[0]
-                beforediff = motionrow[0] - temprow[0]
-                if afterdiff < beforediff:
-                    magrow = mag_data_change(magrow)
-                    one_dataset.extend(magrow)
-                else:
-                    temprow = mag_data_change(temprow)
-                    one_dataset.extend(temprow)
-                break
-            temprow = magrow
-        
-        one_dataset.insert(0,motionrow[0])
-        motionrow = delete_date(motionrow)
-        one_dataset.extend(motionrow)
-        margedata.append(one_dataset)
-    return margedata
 
 def data_marge_v2(motiondata,motionlen, motordata, motorlen, magsensor, maglen):
     final_colums = []
@@ -98,6 +47,10 @@ def data_marge_v2(motiondata,motionlen, motordata, motorlen, magsensor, maglen):
     print(f'全体の行数:{len(merge_df)}')
 
     return merge_df.values.tolist()
+
+
+
+
 
 
 dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\base"
@@ -230,7 +183,7 @@ for col in df.columns:
 # df.loc[manual_mask, :] = np.nan
 
 
-filename = "0818_tubefinger_hit_10kai_rerere"
+filename = "0910_tubefinger_nohit_10kai_re3"
 
 now = datetime.datetime.now()
 filename = filename + now.strftime('%Y%m%d_%H%M%S') + '.pickle'

@@ -100,6 +100,16 @@ def get_magsensor(Ms, magpath):
     
 
 def move(Motors, howtomovepath):
+    Motors.move_to_points([0,0,250], times = 7)
+    Motors.move_to_points([0,0,0], times = 7)
+    Motors.move_to_points([250,0,0], times = 7)
+    Motors.move_to_points([0,0,0], times = 7)
+    Motors.move_to_points([0,250,0], times = 7)
+    Motors.move_to_points([0,0,0], times = 7)
+    write_pkl_event_motor.set()
+    write_pkl_event_mag.set()
+    write_pkl_event_Mc.set()
+    
     with open(howtomovepath, mode='br') as fi:
         change_angle = pickle.load(fi)
     len_angle = len(change_angle)
@@ -113,7 +123,7 @@ def move(Motors, howtomovepath):
             Motors.move_to_points(angles, times = 7)
         else:
             Motors.move_to_points(angles, times = time_len[i%len(time_len)])
-        if i% 500 == 0:
+        if i+1% 500 == 0:
             write_pkl_event_motor.set()
             write_pkl_event_mag.set()
             write_pkl_event_Mc.set()
@@ -185,7 +195,7 @@ def get_motioncapture(Ms, mcpath):
 
 # result_dir = r"0520\nohit1500kai"
 
-base_path = r"C:\Users\shigf\Program\data\0818_tubefinger_rere\hit10kai"
+base_path = r"C:\Users\shigf\Program\data\0903_tubefinger_re3\nohit_10kai"
 
 # ----------------------------------------------------------------------------------------
 
