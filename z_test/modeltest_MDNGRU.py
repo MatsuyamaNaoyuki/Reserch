@@ -153,6 +153,7 @@ def build_motor_seq(rot3_std, type_end_list, L=16, stride=1):
 
     seq_rot = torch.cat(seq_rot, dim=0) if len(seq_rot)>0 else torch.empty(0, L, 3, device=device)
     js_all  = torch.cat(js_all, dim=0)  if len(js_all)>0  else torch.empty(0, device=device, dtype=torch.long)
+
     # rot3_std/js_all からMDNを呼び、y_std/js_all を教師に使うため、js_allも返す
     return seq_rot, js_all
 
@@ -161,7 +162,7 @@ def build_motor_seq(rot3_std, type_end_list, L=16, stride=1):
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
 modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNGRU\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
 L = 32
 stride = 1
 touch_vis = True
@@ -224,8 +225,8 @@ y_last3_clean = y_last3_clean.to(device)
 
 myfunction.print_val(rotate_data_clean.size())
 type_end_list = myfunction.get_type_change_end(typedf)
-rot_seq = build_motor_seq(rotate_data_clean, type_end_list, L=L, stride=stride)
-rot_seq = rot_seq[0]
+rot_seq , js= build_motor_seq(rotate_data_clean, type_end_list, L=L, stride=stride)
+y_last3_clean = y_last3_clean[js]
 # rotate_data_clean ,force3_raw, m9_raw = torch.split(rotate_data_clean, [3,3,9], dim=1)
 
 model_from_script = torch.jit.load(modelpath, map_location="cuda:0")
@@ -240,11 +241,10 @@ real_array = []
 mu_list = []
 
 
+# for i in range(len(rot_seq)):
 
-
-for i in range(len(rot_seq)):
-
-    sample_idx = i  # 推論したいサンプルのインデックス
+for i in range(10000):
+    sample_idx = i+500000  # 推論したいサンプルのインデックス
     single_sample = rot_seq[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     single_sample = single_sample.to(device)
 
@@ -255,8 +255,8 @@ for i in range(len(rot_seq)):
     else:    
         mu = mu * y_std + y_mean
 
-    dis1 = torch.norm(mu[0,0, :] - y_last3_clean[i])
-    dis2 = torch.norm(mu[0,1, :] - y_last3_clean[i])
+    dis1 = torch.norm(mu[0,0, :] - y_last3_clean[i+500000 ])
+    dis2 = torch.norm(mu[0,1, :] - y_last3_clean[i+500000 ])
     dis = torch.min(dis1, dis2)
     dis_array.append(dis)
     prediction_array.append(mu[0])
@@ -267,17 +267,18 @@ distance = sum(dis_array) / len(dis_array)
 myfunction.print_val(distance)
 
 
-# dis_array = [v.item() for v in dis_array]
-# plt.plot(dis_array)  # marker="o" で点を丸で表示
-# plt.title("List as Line Plot")
-# plt.xlabel("Index")   # 横軸（0,1,2,...のインデックス）
-# plt.ylabel("Value")   # 縦軸（リストの値）
-# plt.grid(True)        # グリッド線を表示
-# plt.show()
+dis_array = [v.item() for v in dis_array]
+plt.plot(dis_array)  # marker="o" で点を丸で表示
+plt.title("List as Line Plot")
+plt.xlabel("Index")   # 横軸（0,1,2,...のインデックス）
+plt.ylabel("Value")   # 縦軸（リストの値）
+plt.grid(True)        # グリッド線を表示
+plt.show()
 # parent = os.path.dirname(modelpath)
 # resultpath = os.path.join(parent, "result") 
 # myfunction.wirte_pkl(prediction_array, resultpath)
-
+# js_path = os.path.join(parent, "js") 
+# myfunction.wirte_pkl(js, js_path)
 
 # dis_array1 = np.array(dis_array1)
 # dis_array2 = np.array(dis_array2)

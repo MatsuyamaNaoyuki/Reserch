@@ -197,6 +197,9 @@ def main():
 
     type_end_list = myfunction.get_type_change_end(typedf)
     rot_seq, js = build_motor_seq(rotate_data_clean, type_end_list, L=L, stride=stride)
+    js = js.cpu()
+    y_last3_clean = y_last3_clean[js]
+
 
     N = rot_seq.size(0)
     myfunction.print_val(N)
