@@ -1,19 +1,19 @@
 #マニュアルムーブするだけ
 
-import sys,os, time, datetime, getopt
+import time, datetime, getopt, sys, os
 sys.path.append(os.path.join(os.path.dirname(__file__), 'myclass'))
 import ctypes
 from package import kbhit
 from package import dx2lib as dx2
 from package import setting
 import csv
-import pprint
+import pprint, math
 from myclass.MyDynamixel4 import MyDynamixel
 # from myclass.MotionCapture2 import MotionCapture
 from myclass import myfunction
-import pickle
 from nokov.nokovsdk import *
-
+preFrmNo = 0
+curFrmNo = 0
 def init_motion_capture():
     serverIp = '10.1.1.198'
     try:
@@ -41,8 +41,7 @@ def init_motion_capture():
     else:
         print("Connect Failed: [%d]" % ret)
         exit(0)
-
-    
+        
 def py_data_func(pFrameOfMocapData, pUserData):
     if pFrameOfMocapData == None:  
         print("Not get the data frame.\n")
@@ -65,33 +64,42 @@ def py_data_func(pFrameOfMocapData, pUserData):
                 motiondata.extend([markerset.Markers[iMarker][0],markerset.Markers[iMarker][1], markerset.Markers[iMarker][2]] )
     return motiondata
 
-def get_motiondata():          
+def get_motioncapture():        
     frame = client.PyGetLastFrameOfMocapData()
     if frame :
         try:
             motiondata = py_data_func(frame, client)
         finally:
             client.PyNokovFreeFrame(frame)
-    return motiondata
 
+    return motiondata[-3:]
 
-Motors = MyDynamixel()
+def culc_dif(basemotion, nowmotion):
+    difsum = 0
+    for i in range(len(basemotion)):
+        dif = (basemotion[i] - nowmotion[i])**2
+        difsum = difsum + dif
+    return math.sqrt(difsum)
 init_motion_capture()
+Motors = MyDynamixel()
 
-Motors.move_to_points([-10, -10, -10])
 
+Motors.move_to_points([-10,-10,-10], times=10)
+base_motion = get_motioncapture()
+
+base_motion = get_motioncapture()
 
 dif = 0
-threshold_value = 10
+dif_sikii = 3
 
-base_motion_data = get_motiondata()
+
 for i in range(len(list(Motors.IDs))):
-    while dif > threshold_value:
-        Motors.move(i, 1)
-        now_motiondata = get_motiondata()
-        dif = now_motiondata - base_motion_data
-
-    Motors.move(i, -1)
-    base_motion_data = get_motiondata()
-
-
+    print(i)
+    while dif < dif_sikii:
+        Motors.move(i + 1, 1)
+        time.sleep(0.1)
+        now_motion = get_motioncapture()
+        dif = culc_dif(base_motion, now_motion)
+    Motors.move(i+1, -1)
+    dif = 0
+    base_motion = get_motioncapture()

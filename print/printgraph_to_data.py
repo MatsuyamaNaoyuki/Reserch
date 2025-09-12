@@ -5,10 +5,12 @@ from matplotlib.widgets import Slider
 
 # ===== 設定 =====
 
-# KEYS = ["rotate", "force"] 
-PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
+KEYS = ["rotate", "force"] 
+PATH = r"C:\Users\shigf\Program\data\0903_tubefinger_re3\0910_tubefinger_nohit_10kai_re320250912_134556.pickle"
 # KEYS = ["rotate"] 
-KEYS = ["sensor1","sensor2","sensor3"] 
+# KEYS = ["sensor1","sensor2","sensor3"] 
+# KEYS = ["sensor4","sensor5","sensor6"] 
+# KEYS = ["sensor7","sensor8","sensor9"] 
 # KEYS = ["Mc5"] 
 WINDOW = 5000          # 1画面で表示する点数
 STEP   = 5000           # ←→・ホイールで動くステップ幅（点）

@@ -5,8 +5,8 @@ import pandas as pd
 
 
 
-file_path_list =[r"C:\Users\shigf\Program\data\0818_tubefinger_rere\0818_tubefinger_hit_10kai_rerere20250827_141541.pickle",
-                 r"C:\Users\shigf\Program\data\0818_tubefinger_rere\0818_tubefinger_nohit_10kai_rerere20250827_140828.pickle"]
+file_path_list =[r"C:\Users\shigf\Program\data\0903_tubefinger_re3\0910_tubefinger_hit_1500kai_re320250912_150229.pickle",
+                 r"C:\Users\shigf\Program\data\0903_tubefinger_re3\0910_tubefinger_nohit_1500kai_re320250912_150329.pickle"]
 
 marge_df = None
 
@@ -21,5 +21,5 @@ for i in range (len(file_path_list)):
 
 
 
-output_path = r"C:\Users\shigf\Program\data\0818_tubefinger_rere\mixhit10kaifortestnew.pickle"
+output_path = r"C:\Users\shigf\Program\data\0903_tubefinger_re3\mixhit1500kaifortrain"
 merged_df.to_pickle(output_path)
