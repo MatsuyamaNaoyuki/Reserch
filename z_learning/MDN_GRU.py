@@ -132,11 +132,10 @@ def build_motor_seq(rot3_std, type_end_list, L=16, stride=1):
 
 def main():
     #-----------------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNGRU"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDNGRU"
+    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit1500kaifortrain"
     stride = 1
     L = 32
-    resume_training = False   # 再開したい場合は True にする
     kijun = False
     seiki = True
     #-----------------------------------------------------------------------------------------------------------------------

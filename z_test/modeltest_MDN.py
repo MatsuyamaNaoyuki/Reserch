@@ -136,8 +136,8 @@ def to_numpy_safe(t):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNnew\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle"
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDN\model.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaifortest.pickle"
 
 touch_vis = True
 scatter_motor = True
@@ -236,16 +236,16 @@ distance = sum(dis_array) / len(dis_array)
 myfunction.print_val(distance)
 
 
-# dis_array = [v.item() for v in dis_array]
-# plt.plot(dis_array)  # marker="o" で点を丸で表示
-# plt.title("List as Line Plot")
-# plt.xlabel("Index")   # 横軸（0,1,2,...のインデックス）
-# plt.ylabel("Value")   # 縦軸（リストの値）
-# plt.grid(True)        # グリッド線を表示
-# plt.show()
-# parent = os.path.dirname(modelpath)
-# resultpath = os.path.join(parent, "result") 
-# myfunction.wirte_pkl(prediction_array, resultpath)
+dis_array = [v.item() for v in dis_array]
+plt.plot(dis_array)  # marker="o" で点を丸で表示
+plt.title("List as Line Plot")
+plt.xlabel("Index")   # 横軸（0,1,2,...のインデックス）
+plt.ylabel("Value")   # 縦軸（リストの値）
+plt.grid(True)        # グリッド線を表示
+plt.show()
+parent = os.path.dirname(modelpath)
+resultpath = os.path.join(parent, "result") 
+myfunction.wirte_pkl(prediction_array, resultpath)
 
 
 # dis_array1 = np.array(dis_array1)

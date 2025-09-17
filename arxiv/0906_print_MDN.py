@@ -40,8 +40,8 @@ def culc_currect(y_data, estimation_array):
     myfunction.print_val(currect)
     
 
-y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNnew\result20250909_132554.pickle")
+y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaifortest.pickle")
+estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDN\result20250916_125522.pickle")
 
 
 no_contact_real = True

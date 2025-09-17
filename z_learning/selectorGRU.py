@@ -178,9 +178,9 @@ def test(selector, test_loader,class_weight):
 
 def main():
     #変える部分-----------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selectGRU"
-    modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2\model.pth"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit1500kaifortrain.pickle"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\seletGRU"
+    modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDN\model.pth"
+    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit1500kaifortrain"
     L = 16
     stride = 1
 

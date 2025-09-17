@@ -209,9 +209,9 @@ def make_row_data_with_gosa(dis_array):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\GRUseikika\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle"
-motor_angle = True
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\ResnetGRU_norotate\model.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaibase.pickle"
+motor_angle = False
 motor_force = True
 magsensor = True
 L = 32
@@ -308,13 +308,13 @@ print("1列ごとの平均:", column_means1.round(2))
 print("2列ごとの平均:", column_means2.round(2))
 # myfunction.send_message_for_test(column_means.round(2))
 
-myfunction.print_val(prediction_array)
 
-# parent = os.path.dirname(modelpath)
-# resultpath = os.path.join(parent, "result") 
-# myfunction.wirte_pkl(prediction_array, resultpath)
-# js_path = os.path.join(parent, "js") 
-# myfunction.wirte_pkl(js, js_path)
+
+parent = os.path.dirname(modelpath)
+resultpath = os.path.join(parent, "result") 
+myfunction.wirte_pkl(prediction_array, resultpath)
+js_path = os.path.join(parent, "js") 
+myfunction.wirte_pkl(js, js_path)
 
 # myfunction.wirte_pkl(prediction_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\result")
 # myfunction.wirte_pkl(real_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\real")

@@ -1,203 +1,226 @@
-import pickle
-import numpy as np
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.optim import lr_scheduler
+from torch.utils.data import DataLoader, Subset
 from myclass import myfunction
-import pandas as pd
-import datetime, os, csv
-
-
-
-#時刻消さずに[時刻,"222/222"]->[時刻,222,222]
-def mag_data_change2(row):
-    split_value = row[1].split('/')
-    if len(split_value) != 9:
-        split_value = split_value[1:]
-    row = row[:1]
-    row.extend(split_value)
-    return row
-
-
-def data_marge_v2(motiondata,motionlen, motordata, motorlen, magsensor, maglen):
-    final_colums = []
-    columns = ["timestamp"] + [f"motordata_{i}" for i in range(1, motorlen * 2 + 1)]
-    final_colums.extend(columns)
-    motor_df = pd.DataFrame(motordata, columns=columns)
-
-
-    columns = ["timestamp"] + [f"magdata_{i}" for i in range(1, maglen + 1)]
-    final_colums.extend(columns[1:])
-    mag_df = pd.DataFrame(magsensor, columns=columns)
-
-
-    columns = ["timestamp"] + [f"motiondata_{i}" for i in range(1, motionlen * 3 + 1)]
-    final_colums.extend(columns[1:])
-    motion_df = pd.DataFrame(motiondata, columns=columns)
-    
-    motion_df = motion_df.sort_values("timestamp")
-    motor_df = motor_df.sort_values("timestamp")
-    mag_df = mag_df.sort_values("timestamp")
-
-
-    # magandmotor_df = pd.merge_asof(mag_df, motor_df, on="timestamp", direction="nearest")
-    # merge_df = pd.merge_asof(magandmotor_df, motion_df, on="timestamp", direction="nearest")
-
-
-    magandmotor_df = pd.merge_asof(mag_df, motor_df, on="timestamp", direction="nearest")
-    merge_df = pd.merge_asof(magandmotor_df, motion_df, on="timestamp", direction="nearest")
-    merge_df = merge_df[final_colums]
-    print(f'全体の行数:{len(merge_df)}')
-
-    return merge_df.values.tolist()
-
-def modify_Mc(df):
-    cols_to_check = ['Mc1x', 'Mc1y', 'Mc1z',
-                 'Mc2x', 'Mc2y', 'Mc2z',
-                 'Mc3x', 'Mc3y', 'Mc3z',
-                 'Mc4x', 'Mc4y', 'Mc4z',
-                 'Mc5x', 'Mc5y', 'Mc5z']
-
-    row_mask = (df[cols_to_check] >= 100000).any(axis=1)
-    # 該当行数をカウント
-    nan_row_count = row_mask.sum()
-    # その行すべてをNaNに置き換え
-    df.loc[row_mask, :] = np.nan
-    print(f"motionで削除された行数: {nan_row_count}")
-    
-    df['Mc2x'] = df['Mc2x'] - df['Mc1x']
-    df['Mc2y'] = df['Mc2y'] - df['Mc1y']
-    df['Mc2z'] = df['Mc2z'] - df['Mc1z']
-    df['Mc3x'] = df['Mc3x'] - df['Mc1x']
-    df['Mc3y'] = df['Mc3y'] - df['Mc1y']
-    df['Mc3z'] = df['Mc3z'] - df['Mc1z']
-    df['Mc4x'] = df['Mc4x'] - df['Mc1x']
-    df['Mc4y'] = df['Mc4y'] - df['Mc1y']
-    df['Mc4z'] = df['Mc4z'] - df['Mc1z']
-    df['Mc5x'] = df['Mc5x'] - df['Mc1x']
-    df['Mc5y'] = df['Mc5y'] - df['Mc1y']
-    df['Mc5z'] = df['Mc5z'] - df['Mc1z']
-
-    df = df.drop(columns=['Mc1x'])
-    df = df.drop(columns=['Mc1y'])
-    df = df.drop(columns=['Mc1z'])
-    
-    return df
-
-def modify_force(df):
-    cols_to_check = ['force1', 'force2', 'force3']
-    row_mask = ((df[cols_to_check] > 10000) | (df[cols_to_check] < -2000)).any(axis=1)
-    # 該当行数をカウント
-    nan_row_count = row_mask.sum()
-    # その行すべてをNaNに置き換え
-    df.loc[row_mask, :] = np.nan
-    print(f"forceで削除された行数: {nan_row_count}")
-    return df
-    
-def modify_mag(df):
-    min_mag = 300
-    max_mag = 900
-
-    df['sensor1'] = pd.to_numeric(df['sensor1'], errors='coerce')
-    df['sensor2'] = pd.to_numeric(df['sensor2'], errors='coerce')
-    df['sensor3'] = pd.to_numeric(df['sensor3'], errors='coerce')
-    df['sensor4'] = pd.to_numeric(df['sensor4'], errors='coerce')
-    df['sensor5'] = pd.to_numeric(df['sensor5'], errors='coerce')
-    df['sensor6'] = pd.to_numeric(df['sensor6'], errors='coerce')
-    df['sensor7'] = pd.to_numeric(df['sensor7'], errors='coerce')
-    df['sensor8'] = pd.to_numeric(df['sensor8'], errors='coerce')
-    df['sensor9'] = pd.to_numeric(df['sensor9'], errors='coerce')
-
-    sensor_cols = [f'sensor{i}' for i in range(1, 10)]
-    row_mask = (
-        (df[sensor_cols] < min_mag) | (df[sensor_cols] > max_mag)
-    ).any(axis=1)
-    nan_row_count = row_mask.sum()
-
-    # 該当行を NaN に置換
-    df.loc[row_mask, :] = np.nan
-    print(f"magで削除された行数: {nan_row_count}")
-    
-    return df
-
-def load_df(magname, motorname, motionname):
-    magfile = myfunction.find_pickle_files(magname, base_path)
-    magsensor = myfunction.load_pickle(magfile)
-    magdata = []
-    for magrow in magsensor:
-        magdata.append(mag_data_change2(magrow))
-    maglen = len(magdata[0]) - 1
-
-
-    motorfile = myfunction.find_pickle_files(motorname, base_path)
-    motordata = myfunction.load_pickle(motorfile)
-    motorlen = int((len(motordata[0]) - 1) / 2) 
-
-
-
-    motionfile = myfunction.find_pickle_files(motionname, base_path)
-    motiondata = myfunction.load_pickle(motionfile)
-    motionlen = int((len(motiondata[0]) - 1) /3)
-
-    
-    margedata = data_marge_v2(motiondata, motionlen, motordata,motorlen, magdata, maglen)
-
-    lenname = ["time"] +\
-            [f"rotate{i}" for i in range(1, motorlen+1)] + \
-            [f"force{i}"  for i in range(1, motorlen+1)] + \
-            [f"sensor{i}"  for i in range(1, maglen+1)] + \
-            [f"Mc{i}{p}" for i in range(1, motionlen+1) for p in ("x", "y", "z")]
-
-
-
-    df = pd.DataFrame(margedata, columns=lenname)
-    return df
-
-# ----------------------------------------------------------------------------------------------
-base_path = r"C:\Users\shigf\Program\data\0903_tubefinger_re3\nohit_1500kai"
-filename = "0910_tubefinger_nohit_1500kai_re3"
-kijun = True
-kijunname = "kijuntrain"
-# -----------------------------------------------------------------------------------------------
-
-kijundf = load_df("mag_1_", "motor_1_", "mc_1_")
-kijundf = modify_Mc(kijundf)
-kijundf = modify_force(kijundf)
-kijundf = modify_mag(kijundf)
-kijunlen = len(kijundf)
-
-
-
-df = load_df("magsensor202", "motor202", "motioncapture202")
-df = modify_Mc(df)
-df = modify_force(df)
-df = modify_mag(df)
-
-df = df.iloc[kijunlen:]
-df = df.reset_index()
+from myclass import Mydataset
+from torch.utils.tensorboard import SummaryWriter
+import os 
+from tqdm import tqdm
+from myclass import MyModel
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 
 
 
-for col in df.columns:
-    if df[col].dtype.kind in 'biufc':  # 数値列のみ対象（int, float, complex）
-        col_min = df[col].min(skipna=True)
-        col_max = df[col].max(skipna=True)
+def build_mag_sequences(mag9_std,type_end_list, L=16, stride=1):
+    """
+    typedf: 1 trial の末尾インデックス（昇順）を仮定
+    各 trial 内で過去Lフレームを因果窓で切り出し:
+      seq_mag: [Nseq, L, 9]
+      mu/y は窓の“現在”=末尾フレームに合わせて作るため、その時点の index 配列 js も返す
+    """
+    type_end_list = type_end_list.tolist()
+    type_end_list.insert(0, 0)
+    total_span = (L - 1) * stride
 
-        row_min = df[df[col] == col_min].index[0]
-        row_max = df[df[col] == col_max].index[0]
+    seq_mag, js_all = [], []
+    nan_mask = torch.isnan(mag9_std).any(dim=1)
+    nan_rows = nan_mask.nonzero(as_tuple=True)[0].tolist()
+    nan_rows_set = set(nan_rows) 
+    # rot3_std, y_std は“現在”用のインデックス js で拾うのでここでは触らない
 
-        print(f"{col}:")
-        print(f"  最小値: {col_min:.6f}（行 {row_min}）")
-        print(f"  最大値: {col_max:.6f}（行 {row_max}）\n")
+    for i in range(len(type_end_list)-1):
+
+        start = type_end_list[i] + total_span
+        end   = type_end_list[i+1]
+        if end <= start:
+            continue
+
+        js = torch.arange(start, end, device=mag9_std.device)  # 現在時刻の位置
+        # 過去Lフレームのインデックスを作る
+        rel = torch.arange(L-1, -1, -1, device=mag9_std.device) * stride   
+         
+        idx = js.unsqueeze(1) - rel    # [num, L]
+        # ここで NaN を含む行を除外（必要なら）
+
+        valid_mask = ~nan_mask[idx].any(dim=1)
+
+
+        idx = idx[valid_mask]
+        js = js[valid_mask]
+
+
+        seq_mag.append(mag9_std[idx])  # [num, L, 9]
+        js_all.append(js)
+
+    seq_mag = torch.cat(seq_mag, dim=0) if len(seq_mag)>0 else torch.empty(0, L, 9, device=mag9_std.device)
+    js_all  = torch.cat(js_all, dim=0)  if len(js_all)>0  else torch.empty(0, device=mag9_std.device, dtype=torch.long)
+    # rot3_std/js_all からMDNを呼び、y_std/js_all を教師に使うため、js_allも返す
+    return seq_mag, js_all
 
 
 
 
-myfunction.print_val(df)
+def get_uncrrect_num(pred_num):
+    if pred_num == 0:
+        num = 1
+    elif pred_num == 1:
+        num = 0
 
-parent_dir = os.path.dirname(base_path)
-filename = os.path.join(parent_dir, filename)
-myfunction.wirte_pkl(df, filename)
+    return num
 
-if kijun:
-    filename = os.path.join(parent_dir, "kijuntest")
-    myfunction.wirte_pkl(kijundf, filename)
-    
+
+#変える部分-----------------------------------------------------------------------------------------------------------------
+
+MDNpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDN\model.pth"
+selectorpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\seletGRU\selector.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0916another\0916_another_test_10kai.pickle"
+L = 16
+stride = 1
+seiki = True
+kijun = False
+
+
+touch_vis = True
+scatter_motor = True
+row_data_swith = True
+#-----------------------------------------------------------------------------------------------------------------
+
+input_dim = 3
+
+
+
+
+
+x_data, y_data, typedf = myfunction.read_pickle_to_torch(filename, motor_angle=True, motor_force=True, magsensor=True)
+y_last3 = y_data[:, -3:]
+y_last3 = y_last3.to(device)
+
+
+mdn_scaler_path = myfunction.find_pickle_files("scaler", os.path.dirname(MDNpath))
+mdn_scaler = myfunction.load_pickle(mdn_scaler_path)
+
+
+
+select_scaler_path = myfunction.find_pickle_files("scaler", os.path.dirname(selectorpath))
+select_scaler_data = myfunction.load_pickle(select_scaler_path)
+if seiki:
+    sel_x_max = torch.tensor(select_scaler_data['x_max'],device = device).float()
+    sel_x_min = torch.tensor(select_scaler_data['x_min'],device = device).float()
+    sel_x_scale = sel_x_max - sel_x_min
+    sel_y_max = torch.tensor(select_scaler_data['y_max'],device = device).float()
+    sel_y_min = torch.tensor(select_scaler_data['y_min'],device = device).float()
+    sel_y_scale = sel_y_max - sel_y_min
+
+    mdn_x_max = torch.tensor(mdn_scaler['x_max'], device=device).float()
+    mdn_x_min = torch.tensor(mdn_scaler['x_min'], device=device).float()
+    mdn_x_scale = mdn_x_max - mdn_x_min
+    mdn_y_max = torch.tensor(mdn_scaler['y_max'], device=device).float()
+    mdn_y_min = torch.tensor(mdn_scaler['y_min'], device=device).float()
+    mdn_y_scale = mdn_y_max - mdn_y_min
+
+
+else:
+    sel_x_mean = torch.tensor(select_scaler_data['x_mean'],device = device).float()
+    sel_x_std = torch.tensor(select_scaler_data['x_std'],device = device).float()
+    sel_y_mean = torch.tensor(select_scaler_data['y_mean'],device = device).float()
+    sel_y_std = torch.tensor(select_scaler_data['y_std'],device = device).float()
+
+
+    mdn_x_mean = torch.tensor(mdn_scaler['x_mean'], device=device).float()
+    mdn_x_std = torch.tensor(mdn_scaler['x_std'], device=device).float()
+    mdn_y_mean = torch.tensor(mdn_scaler['y_mean'], device=device).float()
+    mdn_y_std = torch.tensor(mdn_scaler['y_std'], device=device).float()
+
+    mdn_x_mean = mdn_x_mean[:3]
+    mdn_x_std = mdn_x_std[:3]
+
+
+if kijun:    
+    sel_fitA = select_scaler_data['fitA']
+    alphaA = torch.ones_like(sel_fitA.amp)
+    x_data = Mydataset.apply_align_torch(x_data, sel_fitA, alphaA)
+rot3_raw, force3_raw, m9_raw = torch.split(x_data, [3,3,9], dim=1)
+
+
+
+if seiki:
+    t3_std_mdn = (rot3_raw.to(device) - mdn_x_min) / mdn_x_scale
+    m9_std_sel = (m9_raw.to(device) - sel_x_min[6:15]) / sel_x_scale[6:15]
+
+else:
+    t3_std_mdn = (rot3_raw.to(device) - mdn_x_mean) / mdn_x_std
+    m9_std_sel = (m9_raw.to(device) - sel_x_mean[6:15]) / sel_x_std[6:15].unsqueeze(0)  # (N,9)
+
+
+
+type_end_list = myfunction.get_type_change_end(typedf)
+mag_seq, js = build_mag_sequences(m9_std_sel, type_end_list, L=L, stride=stride)
+
+
+use_std_rotate = t3_std_mdn[js]  # shape: (len(js), ...)
+use_std_y      = y_last3[js] 
+
+
+use_std_rotate = use_std_rotate.to(device)
+use_std_y= use_std_y.to(device)
+mag_seq = mag_seq.to(device)
+
+model_MDN = torch.jit.load(MDNpath, map_location="cuda:0")
+model_MDN.eval()
+model_select = torch.jit.load(selectorpath, map_location="cuda:0")
+model_select.eval()
+
+
+
+prediction_array = []
+
+
+correct = 0
+
+
+with torch.no_grad():
+    for i in range(use_std_rotate.size(0)):
+        t3 = use_std_rotate[i:i+1]
+        m9i = mag_seq[i:i+1]
+        pi, mu_std_mdn, sigma = model_MDN(t3)
+        if seiki:
+            mu_world = mu_std_mdn * mdn_y_scale + mdn_y_min
+        else:
+            mu_world = mu_std_mdn * mdn_y_std + mdn_y_mean
+        # mu_std_sel = (mu_world - sel_y_mean) / sel_y_std
+        mupair = torch.cat([mu_std_mdn[:,0,:], mu_std_mdn[:,1,:]], dim=1)  # (1,15)
+        logits = model_select(m9i, mupair)      # (1,2)
+        pred_idx = logits[0].argmax(dim=1).item()
+        un_pred_idx = get_uncrrect_num(pred_idx)
+        # 選ばれたμは“実スケール”で返す（可視化や保存はこちらが正しい）
+        pred_world = mu_world[0, pred_idx, :]            # (3,)
+        unpred_world = mu_world[0, un_pred_idx, :]
+
+        d_pred = torch.linalg.norm(pred_world - use_std_y[i])
+        d_unpred = torch.linalg.norm(unpred_world - use_std_y[i])
+
+        if d_pred.item() < d_unpred.item():
+            correct = correct +1
+
+
+
+        prediction_array.append(pred_world.detach().cpu())
+
+correct = correct / 10000
+
+
+
+
+
+
+# myfunction.print_val(prediction_array)
+myfunction.print_val(correct)
+
+parent = os.path.dirname(selectorpath)
+resultpath = os.path.join(parent, "result") 
+myfunction.wirte_pkl(prediction_array, resultpath)
+js_path = os.path.join(parent, "js") 
+myfunction.wirte_pkl(js, js_path)

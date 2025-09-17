@@ -161,8 +161,8 @@ def build_motor_seq(rot3_std, type_end_list, L=16, stride=1):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNGRU\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
+modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDNGRU\model.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaifortest.pickle"
 L = 32
 stride = 1
 touch_vis = True
@@ -241,10 +241,10 @@ real_array = []
 mu_list = []
 
 
-# for i in range(len(rot_seq)):
+for i in range(len(rot_seq)):
 
-for i in range(10000):
-    sample_idx = i+500000  # 推論したいサンプルのインデックス
+# for i in range(10000):
+    sample_idx = i # 推論したいサンプルのインデックス
     single_sample = rot_seq[sample_idx].unsqueeze(0)  # (input_dim,) -> (1, input_dim)
     single_sample = single_sample.to(device)
 
@@ -255,8 +255,8 @@ for i in range(10000):
     else:    
         mu = mu * y_std + y_mean
 
-    dis1 = torch.norm(mu[0,0, :] - y_last3_clean[i+500000 ])
-    dis2 = torch.norm(mu[0,1, :] - y_last3_clean[i+500000 ])
+    dis1 = torch.norm(mu[0,0, :] - y_last3_clean[i])
+    dis2 = torch.norm(mu[0,1, :] - y_last3_clean[i])
     dis = torch.min(dis1, dis2)
     dis_array.append(dis)
     prediction_array.append(mu[0])
@@ -274,11 +274,11 @@ plt.xlabel("Index")   # 横軸（0,1,2,...のインデックス）
 plt.ylabel("Value")   # 縦軸（リストの値）
 plt.grid(True)        # グリッド線を表示
 plt.show()
-# parent = os.path.dirname(modelpath)
-# resultpath = os.path.join(parent, "result") 
-# myfunction.wirte_pkl(prediction_array, resultpath)
-# js_path = os.path.join(parent, "js") 
-# myfunction.wirte_pkl(js, js_path)
+parent = os.path.dirname(modelpath)
+resultpath = os.path.join(parent, "result") 
+myfunction.wirte_pkl(prediction_array, resultpath)
+js_path = os.path.join(parent, "js") 
+myfunction.wirte_pkl(js, js_path)
 
 # dis_array1 = np.array(dis_array1)
 # dis_array2 = np.array(dis_array2)

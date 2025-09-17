@@ -40,9 +40,9 @@ def culc_currect(y_data, estimation_array):
     myfunction.print_val(currect)
     
 
-y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNGRU\result20250909_200920.pickle")
-js = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDNGRU\js20250909_200837.pickle")
+y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0916another\0916_another_test_10kai.pickle")
+estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0916another\MDNselectorGRU\result20250916_165555.pickle")
+js = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\0916another\MDNselectorGRU\js20250916_165555.pickle")
 idx = js.cpu().numpy()
 y_data = y_data.iloc[idx]
 

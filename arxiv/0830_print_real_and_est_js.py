@@ -49,11 +49,11 @@ def culc_currect(y_data, estimation_array):
     myfunction.print_val(currect)
     
 
-y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit10kaifortest.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\MDN_selector\result20250905_150523.pickle")
-js = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\GRU_seikika\js20250903_133235.pickle")
 
 
+y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaibase.pickle")
+estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\ResnetGRU_base\result20250917_130855.pickle")
+js = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\ResnetGRU_norotate\js20250917_131301.pickle")
 
 # y_data_usiro = y_data.loc[y_data["type"].eq(1)].copy()
 
@@ -68,8 +68,8 @@ y_data = y_data.iloc[idx]
 # y_data = pd.concat([y_data, y_data_usiro], axis=0, ignore_index=True)
 
 
-# estimation_array = [x[0] for x in estimation_array]
-# estimation_array = [x[9:12] for x in estimation_array]
+estimation_array = [x[0] for x in estimation_array]
+estimation_array = [x[9:12] for x in estimation_array]
 
 no_contact_real = True
 contact_real = True

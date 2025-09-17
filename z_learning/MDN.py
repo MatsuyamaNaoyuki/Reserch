@@ -96,10 +96,7 @@ def test(model, test_loader, criterion):
 
 
 
-def save_test(test_dataset, result_dir):
-    test_indices = test_dataset.indices  # 添え字のみ取得
-    test_indices_path = os.path.join(result_dir, "test_indices")
-    myfunction.wirte_pkl(test_indices, test_indices_path)
+
 
 def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, filepath):
     checkpoint = {
@@ -114,14 +111,14 @@ def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss
 
 def main():
     #-----------------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\temp"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDN"
+    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit1500kaifortrain"
     resume_training = False   # 再開したい場合は True にする
     kijun = False
     seiki = True
     #-----------------------------------------------------------------------------------------------------------------------
 
-    input_dim = 4
+    input_dim = 3
     num_epochs = 500
     batch_size = 128
     r = 0.8
@@ -214,7 +211,7 @@ def main():
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, pin_memory=True, num_workers=1, persistent_workers=True)
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=1, persistent_workers=True)
 
-    save_test(test_dataset,result_dir)
+
     start_epoch = 0
     record_train_loss = []
     record_test_loss = []

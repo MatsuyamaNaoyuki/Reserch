@@ -1,1 +1,5 @@
-
+parent = os.path.dirname(modelpath)
+resultpath = os.path.join(parent, "result") 
+myfunction.wirte_pkl(prediction_array, resultpath)
+js_path = os.path.join(parent, "js") 
+myfunction.wirte_pkl(js, js_path)

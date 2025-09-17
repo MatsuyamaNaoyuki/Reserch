@@ -74,11 +74,15 @@ def get_uncrrect_num(pred_num):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-MDNpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\MDN2\model.pth"
-selectorpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\selectGRU\selector.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\reretubefinger0819\mixhit10kaifortestnew.pickle"
+MDNpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDN\model.pth"
+selectorpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\seletGRU\selector.pth"
+filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaifortest.pickle"
 L = 16
 stride = 1
+seiki = True
+kijun = False
+
+
 touch_vis = True
 scatter_motor = True
 row_data_swith = True
@@ -102,17 +106,37 @@ mdn_scaler = myfunction.load_pickle(mdn_scaler_path)
 
 select_scaler_path = myfunction.find_pickle_files("scaler", os.path.dirname(selectorpath))
 select_scaler_data = myfunction.load_pickle(select_scaler_path)
-sel_x_mean = torch.tensor(select_scaler_data['x_mean'],device = device).float()
-sel_x_std = torch.tensor(select_scaler_data['x_std'],device = device).float()
-sel_y_mean = torch.tensor(select_scaler_data['y_mean'],device = device).float()
-sel_y_std = torch.tensor(select_scaler_data['y_std'],device = device).float()
+if seiki:
+    sel_x_max = torch.tensor(select_scaler_data['x_max'],device = device).float()
+    sel_x_min = torch.tensor(select_scaler_data['x_min'],device = device).float()
+    sel_x_scale = sel_x_max - sel_x_min
+    sel_y_max = torch.tensor(select_scaler_data['y_max'],device = device).float()
+    sel_y_min = torch.tensor(select_scaler_data['y_min'],device = device).float()
+    sel_y_scale = sel_y_max - sel_y_min
+
+    mdn_x_max = torch.tensor(mdn_scaler['x_max'], device=device).float()
+    mdn_x_min = torch.tensor(mdn_scaler['x_min'], device=device).float()
+    mdn_x_scale = mdn_x_max - mdn_x_min
+    mdn_y_max = torch.tensor(mdn_scaler['y_max'], device=device).float()
+    mdn_y_min = torch.tensor(mdn_scaler['y_min'], device=device).float()
+    mdn_y_scale = mdn_y_max - mdn_y_min
+
+
+else:
+    sel_x_mean = torch.tensor(select_scaler_data['x_mean'],device = device).float()
+    sel_x_std = torch.tensor(select_scaler_data['x_std'],device = device).float()
+    sel_y_mean = torch.tensor(select_scaler_data['y_mean'],device = device).float()
+    sel_y_std = torch.tensor(select_scaler_data['y_std'],device = device).float()
+
+
+    mdn_x_mean = torch.tensor(mdn_scaler['x_mean'], device=device).float()
+    mdn_x_std = torch.tensor(mdn_scaler['x_std'], device=device).float()
+    mdn_y_mean = torch.tensor(mdn_scaler['y_mean'], device=device).float()
+    mdn_y_std = torch.tensor(mdn_scaler['y_std'], device=device).float()
+
+
+    
 sel_fitA = select_scaler_data['fitA']
-
-mdn_x_mean = torch.tensor(mdn_scaler['x_mean'], device=device).float()
-mdn_x_std = torch.tensor(mdn_scaler['x_std'], device=device).float()
-mdn_y_mean = torch.tensor(mdn_scaler['y_mean'], device=device).float()
-mdn_y_std = torch.tensor(mdn_scaler['y_std'], device=device).float()
-
 
 alphaA = torch.ones_like(sel_fitA.amp)
 xA_proc = Mydataset.apply_align_torch(x_data, sel_fitA, alphaA)

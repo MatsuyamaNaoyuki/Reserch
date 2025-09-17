@@ -223,9 +223,9 @@ def test(selector, test_loader,class_weight, alpha = 0.2, gamma = 2e-4, delta= 1
 
 def main():
     #変える部分-----------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_MDN\selectorres"
-    modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_MDN\MDN\model.pth"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_MDN\mixhit_fortraintypenan20250715_163007.pickle"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\seletGRU"
+    modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDN\model.pth"
+    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit1500kaifortrain"
     stride = 1
     L = 16
     kijun = False
@@ -306,7 +306,7 @@ def main():
 
     mask = torch.isfinite(x_data).all(dim=1) & torch.isfinite(y_last3).all(dim=1)
 
-    std_rotate_data, std_force_data, std_mag_data = torch.split(std_xdata, [4, 4, 9], dim=1)
+    std_rotate_data, std_force_data, std_mag_data = torch.split(std_xdata, [3, 3, 9], dim=1)
             
 
     type_end_list = myfunction.get_type_change_end(typedf)

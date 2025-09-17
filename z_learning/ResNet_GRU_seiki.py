@@ -148,17 +148,44 @@ def save_test(test_dataset, result_dir):
     # **pickle ファイルとして保存**
     myfunction.wirte_pkl(test_indices, test_indices_path)
 
+def make_min_max(x_data, y_data):
+    x_min = x_data.amin(dim=0, keepdim=True)
+    x_max = x_data.amax(dim=0, keepdim=True)
+    y_min = y_data.amin(dim=0, keepdim=True)
+    y_max = y_data.amax(dim=0, keepdim=True)
+
+    # rotatelen = 0
+    forcelen = 3
+    maglen = 9
+    group_sizes = [forcelen, maglen]
+    result_parts_min = []
+    result_parts_max = []
+    start = 0
+
+    for size in group_sizes:
+        group_min = x_min[:, start:start+size].min()
+        group_max = x_max[:, start:start+size].max()
+        result_parts_min.append(group_min.repeat(size))
+        result_parts_max.append(group_max.repeat(size))
+        start = start + size
+    x_min = torch.cat(result_parts_min, dim = 0)
+    x_max = torch.cat(result_parts_max, dim = 0)
+
+
+
+    return x_min, x_max, y_min, y_max
+
 
 def main():
 #---------------------------------------------------------------------------------- --------------------------------------
-    motor_angle = True
+    motor_angle = False
     motor_force = True
     magsensor = True
     L = 32 
     stride = 1
 
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\GRU_seikika"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\retubefinger0816\mixhit1500kaifortrain.pickle"
+    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\ResnetGRU_norotate"
+    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit1500kaibase.pickle"
     resume_training = False   # 再開したい場合は True にする
 
 
@@ -202,10 +229,14 @@ def main():
     x_data_clean = x_data[mask]
     y_data_clean = y_data[mask]
 
-    x_min = x_data_clean.amin(dim=0, keepdim=True)
-    x_max = x_data_clean.amax(dim=0, keepdim=True)
-    y_min = y_data_clean.amin(dim=0, keepdim=True)
-    y_max = y_data_clean.amax(dim=0, keepdim=True)
+
+  
+
+    x_min, x_max, y_min, y_max = make_min_max(x_data_clean, y_data_clean)
+
+
+
+
 
     x_scale = (x_max - x_min).clamp(min=1e-8)
     y_scale = (y_max - y_min).clamp(min=1e-8)
