@@ -139,3 +139,49 @@ def align_to_standardize_all(kijundata, data):
 
 
 
+
+def make_min_max(x_data, y_data, rotate = True, force = True, mag = True, category = True):
+    x_inf = torch.where(torch.isnan(x_data), torch.tensor(float('inf'), device=x_data.device), x_data)
+    x_minf = torch.where(torch.isnan(x_data), torch.tensor(float('-inf'), device=x_data.device), x_data)
+    y_inf = torch.where(torch.isnan(y_data), torch.tensor(float('inf'), device=x_data.device), y_data)
+    y_minf = torch.where(torch.isnan(y_data), torch.tensor(float('-inf'), device=x_data.device),y_data)    
+    x_min = x_inf.amin(dim=0, keepdim=True)
+    x_max = x_minf.amax(dim=0, keepdim=True)
+    y_min = y_inf.amin(dim=0, keepdim=True)
+    y_max = y_minf.amax(dim=0, keepdim=True)
+
+    if category == False:
+        return x_min, x_max, y_min, y_max  
+
+    else: 
+        rotatelen = 3
+        forcelen = 3
+        maglen = 9
+        group_sizes = []
+        if rotate:
+            group_sizes.append(rotatelen)
+        if force:
+            group_sizes.append(forcelen)
+        if mag:
+            group_sizes.append(maglen)
+
+        if sum(group_sizes) != len(x_data[0]):
+            raise ValueError("長さが違うよ")
+
+
+        result_parts_min = []
+        result_parts_max = []
+        start = 0
+
+        for size in group_sizes:
+            group_min = x_min[:, start:start+size].min()
+            group_max = x_max[:, start:start+size].max()
+            result_parts_min.append(group_min.repeat(size))
+            result_parts_max.append(group_max.repeat(size))
+            start = start + size
+        x_min = torch.cat(result_parts_min, dim = 0)
+        x_max = torch.cat(result_parts_max, dim = 0)
+
+
+
+        return x_min, x_max, y_min, y_max

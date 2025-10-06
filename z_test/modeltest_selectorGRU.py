@@ -79,7 +79,10 @@ selectorpath = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefin
 filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaifortest.pickle"
 L = 16
 stride = 1
-seiki = True
+
+magsensor = True
+motor_force = False
+
 kijun = False
 
 
@@ -89,14 +92,17 @@ row_data_swith = True
 #-----------------------------------------------------------------------------------------------------------------
 
 input_dim = 3
+output_class = 2
+output_dim = 3
 
 
 
 
 
-x_data, y_data, typedf = myfunction.read_pickle_to_torch(filename, motor_angle=True, motor_force=True, magsensor=True)
-y_last3 = y_data[:, -3:]
+x_data, y_data, typedf = myfunction.read_pickle_to_torch(filename, motor_angle=True, motor_force=motor_force, magsensor=magsensor)
+y_last3 = y_data[:, -1 * output_dim:]
 y_last3 = y_last3.to(device)
+
 
 
 mdn_scaler_path = myfunction.find_pickle_files("scaler", os.path.dirname(MDNpath))

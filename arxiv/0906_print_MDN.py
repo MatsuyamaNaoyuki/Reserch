@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 from myclass import myfunction
 import pandas as pd
 import numpy as np
+import torch
 
 
 
@@ -9,10 +10,21 @@ import numpy as np
 
 def culc_gosa(y_data, estimation_array):
     gosa = 0
-    myfunction.print_val(len(y_data))
-    myfunction.print_val(len(estimation_array))
+    list_y_data = y_data[["Mc5x", "Mc5y", "Mc5z"]].values.tolist()
+    npest = np.array([
+        t.detach().cpu().numpy() if isinstance(t, torch.Tensor) else t
+        for t in estimation_array
+    ])
+
+    arr1 = npest[:, 0, -3:]   # 1つ目 → shape (6691, 12)
+    arr2 = npest[:, 1, -3:]
+
+
+
     for i in range(len(y_data)):
-        distance = np.linalg.norm(np.array(y_data[i])- np.array(estimation_array[i]))
+        distance1 = np.linalg.norm(np.array(list_y_data[i])- np.array(arr1[i]))
+        distance2 = np.linalg.norm(np.array(list_y_data[i])- np.array(arr2[i]))
+        distance = min(distance1, distance2)
         gosa = gosa + distance
     
     gosa = gosa / len(y_data)
@@ -40,15 +52,15 @@ def culc_currect(y_data, estimation_array):
     myfunction.print_val(currect)
     
 
-y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaifortest.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDN\result20250916_125522.pickle")
+y_data = myfunction.load_pickle(r"D:\Matsuyama\laerningdataandresult\re3tubefingerforMDPI\mixhit10kaifortestbase.pickle")
+estimation_array= myfunction.load_pickle(r"D:\Matsuyama\laerningdataandresult\re3tubefingerforMDPI\MDN\result20251006_123216.pickle")
 
 
 no_contact_real = True
 contact_real = True
 no_contact_est = True
 contact_est = True
-myfunction.print_val(estimation_array)
+
 
 
 
@@ -74,17 +86,17 @@ y = ly[half::1]
 lz  = y_data['Mc5z'].to_list()
 z = lz[half::1]
 
-ex = [row[0]  for row in list1]
-ey = [row[1] for row in list1]
-ez = [row[2] for row in list1]
+ex = [row[9]  for row in list1]
+ey = [row[10] for row in list1]
+ez = [row[11] for row in list1]
 
 nx  = lx[:half:1]
 ny  = ly[:half:1]
 nz  = lz[:half:1]
 
-enx = [row[0]  for row in list2]
-eny = [row[1] for row in list2]
-enz = [row[2] for row in list2]
+enx = [row[9]  for row in list2]
+eny = [row[10] for row in list2]
+enz = [row[11] for row in list2]
 
 min_len = min(len(x), len(nx), len(ex), len(enx))
 x, y, z = x[:min_len], y[:min_len], z[:min_len]

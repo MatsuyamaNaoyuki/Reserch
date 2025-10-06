@@ -1,3 +1,7 @@
+import sys, os
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 import matplotlib.pyplot as plt
 from myclass import myfunction
 import pandas as pd
@@ -50,13 +54,11 @@ def culc_currect(y_data, estimation_array):
     
 
 
-
-y_data = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaibase.pickle")
-estimation_array= myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\ResnetGRU_base\result20250917_130855.pickle")
-js = myfunction.load_pickle(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\ResnetGRU_norotate\js20250917_131301.pickle")
+y_data = myfunction.load_pickle(r"D:\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaifortest.pickle")
+estimation_array= myfunction.load_pickle(r"D:\Matsuyama\laerningdataandresult\re3tubefinger0912\seletGRU\result20250916_134156.pickle")
+js = myfunction.load_pickle(r"D:\Matsuyama\laerningdataandresult\re3tubefinger0912\selectGRU_force\js20250922_180634.pickle")
 
 # y_data_usiro = y_data.loc[y_data["type"].eq(1)].copy()
-
 # y_data_usiro = y_data_usiro[32:3032]
 # myfunction.print_val(y_data_usiro)
 
@@ -68,8 +70,8 @@ y_data = y_data.iloc[idx]
 # y_data = pd.concat([y_data, y_data_usiro], axis=0, ignore_index=True)
 
 
-estimation_array = [x[0] for x in estimation_array]
-estimation_array = [x[9:12] for x in estimation_array]
+# estimation_array = [x[0] for x in estimation_array]
+# estimation_array = [x[9:12] for x in estimation_array]
 
 no_contact_real = True
 contact_real = True

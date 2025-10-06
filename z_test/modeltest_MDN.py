@@ -136,8 +136,8 @@ def to_numpy_safe(t):
 
 #変える部分-----------------------------------------------------------------------------------------------------------------
 
-modelpath= r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDN\model.pth"
-filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaifortest.pickle"
+modelpath= r"D:\Matsuyama\laerningdataandresult\re3tubefingerforMDPI\MDN\model.pth"
+filename = r"D:\Matsuyama\laerningdataandresult\re3tubefingerforMDPI\mixhit10kaifortestbase.pickle"
 
 touch_vis = True
 scatter_motor = True
@@ -146,7 +146,6 @@ seiki = True
 kijun = False
 #-----------------------------------------------------------------------------------------------------------------
 
-input_dim = 3
 
 
 
@@ -155,7 +154,7 @@ pickle = detect_file_type(filename)
 basepath = Path(r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult")
 
 rotate_data, y_data, typedf= myfunction.read_pickle_to_torch(filename, True, False, False)
-y_last3 = y_data[:, -3:]
+y_last3 = y_data[:, -12:]
 
 
 rotate_data = rotate_data.to(device)
@@ -208,7 +207,6 @@ dis_array = []
 prediction_array = []
 real_array = []
 mu_list = []
-
 
 
 

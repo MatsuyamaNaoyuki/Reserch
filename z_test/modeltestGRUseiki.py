@@ -310,11 +310,11 @@ print("2列ごとの平均:", column_means2.round(2))
 
 
 
-parent = os.path.dirname(modelpath)
-resultpath = os.path.join(parent, "result") 
-myfunction.wirte_pkl(prediction_array, resultpath)
-js_path = os.path.join(parent, "js") 
-myfunction.wirte_pkl(js, js_path)
+# parent = os.path.dirname(modelpath)
+# resultpath = os.path.join(parent, "result") 
+# myfunction.wirte_pkl(prediction_array, resultpath)
+# js_path = os.path.join(parent, "js") 
+# myfunction.wirte_pkl(js, js_path)
 
 # myfunction.wirte_pkl(prediction_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\result")
 # myfunction.wirte_pkl(real_array, r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\Robomech_GRU\allusenan\real")

@@ -14,7 +14,7 @@ import pickle
 import discord
 from dotenv import load_dotenv
 import inspect
-
+import torch
 
 # def make_3D_graph(path, firstrow = 1, lastrow = 5):
 #     df = pd.read_csv(path)
@@ -399,3 +399,4 @@ def print_val(val):
     # 引数に渡された部分を取り出す
     var_name = line.strip().split("print_val(")[1].split(")")[0]
     print(f"{var_name}: {val}")
+

@@ -6,9 +6,9 @@ from matplotlib.widgets import Slider
 # ===== 設定 =====
 
 KEYS = ["force"] 
-PATH = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit10kaifortest.pickle"
+PATH = r"D:\Matsuyama\laerningdataandresult\re3tubefingerforMDPI\mixhit10kaibase.pickle"
 KEYS = ["rotate"] 
-# KEYS = ["sensor1","sensor2","sensor3"] 
+KEYS = ["sensor1","sensor2","sensor3"] 
 # KEYS = ["sensor4","sensor5","sensor6"] 
 # KEYS = ["sensor7","sensor8","sensor9"] 
 # KEYS = ["Mc5"] 

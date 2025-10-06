@@ -1,43 +1,27 @@
+
+import sys, os
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim import lr_scheduler
 from torch.utils.data import DataLoader, Subset
 from myclass import myfunction
-from myclass import Mydataset
+from myclass import Mydataset, MyModel
 from torch.utils.tensorboard import SummaryWriter
 import os 
 from tqdm import tqdm
 
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-class MDN2(nn.Module):
-    def __init__(self, input_dim =3,  hidden = 128):
-        super().__init__()
-        self.backbone = nn.Sequential(
-            nn.Linear(input_dim, hidden),
-            nn.ReLU(),
-            nn.Linear(hidden, hidden),
-            nn.ReLU()
-        )
-        self.out_pi = nn.Linear(hidden, 2)
-        self.out_mu = nn.Linear(hidden, 2*3)
-        self.out_s = nn.Linear(hidden, 2*3)
-    
-    def forward(self, rotate_seq):
-        h = self.backbone(rotate_seq)
-        pi_logit = self.out_pi(h)
-        pi = torch.softmax(pi_logit, dim = -1)
-        mu = self.out_mu(h).view(-1, 2,3)
-        s = self.out_s(h).view(-1,2,3)
-        sigma = F.softplus(s) + 1e-3
-        return pi ,mu,sigma
-    
+   
 
 #損失関数の定義
 def mdn_nll(pi, mu, sigma, target):
-    B, K, _ =mu.shape
-    x = target.unsqueeze(1).expand(B,K,3)
+    B, K, L =mu.shape
+    x = target.unsqueeze(1).expand(B,K,L)
 
     comp_logprob = -0.5 * (((x - mu)/sigma)**2).sum(dim=-1) \
                    - sigma.log().sum(dim=-1) \
@@ -98,6 +82,7 @@ def test(model, test_loader, criterion):
 
 
 
+
 def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss, filepath):
     checkpoint = {
         'epoch': epoch,
@@ -111,28 +96,34 @@ def save_checkpoint(epoch, model, optimizer, record_train_loss, record_test_loss
 
 def main():
     #-----------------------------------------------------------------------------------------------------------------------
-    result_dir = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\MDN"
-    filename = r"C:\Users\WRS\Desktop\Matsuyama\laerningdataandresult\re3tubefinger0912\mixhit1500kaifortrain"
+    result_dir = r"D:\Matsuyama\laerningdataandresult\re3tubefingerforMDPI\MDN"
+    filename = r"D:\Matsuyama\laerningdataandresult\re3tubefingerforMDPI\mixhit1500kaifortrainbase.pickle"
     resume_training = False   # 再開したい場合は True にする
     kijun = False
-    seiki = True
+
     #-----------------------------------------------------------------------------------------------------------------------
 
     input_dim = 3
+    output_class = 2
+    output_dim = 12
     num_epochs = 500
     batch_size = 128
     r = 0.8
     patience_stop = 30
     patience_scheduler = 10
+    
 
-    model = MDN2(input_dim=input_dim).to(device)
+
+    model = MyModel.MDN(input_dim=input_dim, output_class=output_class, output_dim=output_dim).to(device)
     criterion = mdn_nll
     optimizer = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = lr_scheduler.ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=patience_scheduler)
 
     rotate_data, y_data, typedf = myfunction.read_pickle_to_torch(filename,motor_angle=True, motor_force=False, magsensor=False)
-    y_last3 = y_data[:, -3:]
+    y_last3 = y_data[:, -1 * output_dim:]
 
+
+    
 
     if kijun == True:
         base_dir = os.path.dirname(result_dir)
@@ -141,29 +132,25 @@ def main():
         kijunx, _ ,_= myfunction.read_pickle_to_torch(kijun_dir,motor_angle=True, motor_force=False, magsensor=False)
         fitA = Mydataset.fit_calibration_torch(kijunx)
         alphaA = torch.ones_like(fitA.amp)
-        xA_proc = Mydataset.apply_align_torch(rotate_data, fitA, alphaA)
-
-        if seiki == True:
-            x_max, x_min, x_scale = Mydataset.fit_normalizer_torch(xA_proc)
-            rotate_data = Mydataset.apply_normalize_torch(xA_proc, x_min, x_scale)
-        else:
-            x_mean, x_std = Mydataset.fit_standardizer_torch(xA_proc)
-            rotate_data = Mydataset.apply_standardize_torch(xA_proc, x_mean, x_std)
-    else:
-        if seiki == True:
-            x_max, x_min, x_scale = Mydataset.fit_normalizer_torch(rotate_data)
-            rotate_data = Mydataset.apply_normalize_torch(rotate_data, x_min, x_scale)
-        else:
-            x_mean, x_std = Mydataset.fit_standardizer_torch(rotate_data)
-            rotate_data = Mydataset.apply_standardize_torch(rotate_data, x_mean, x_std)
+        rotate_data = Mydataset.apply_align_torch(rotate_data, fitA, alphaA)
 
 
-    if seiki == True:
-        y_max, y_min, y_scale = Mydataset.fit_normalizer_torch(y_last3)
-        y_last3 = Mydataset.apply_normalize_torch(y_last3, y_min,y_scale)
-    else:
-        y_mean, y_std = Mydataset.fit_standardizer_torch(y_last3)
-        y_last3 = Mydataset.apply_standardize_torch(y_last3, y_mean, y_std)
+    x_min, x_max, y_min, y_max = Mydataset.make_min_max(rotate_data, y_last3, True, False, False,True)
+
+  
+    x_scale = (x_max - x_min).clamp(min=1e-8)
+    y_scale = (y_max - y_min).clamp(min=1e-8)
+
+    scaler_data = {
+        'x_min': x_min.cpu().numpy(),
+        'x_max': x_max.cpu().numpy(),
+        'y_min': y_min.cpu().numpy(),
+        'y_max': y_max.cpu().numpy(),
+    }
+
+    rotate_data = (rotate_data - x_min) / x_scale
+    y_last3 = (y_last3 - y_min) / y_scale
+
 
 
 
@@ -183,22 +170,6 @@ def main():
 
 
 
-    if seiki == True:
-        scaler_data = {
-            'x_min': x_min.cpu().numpy(),
-            'x_max': x_max.cpu().numpy(),
-            'y_min': y_min.cpu().numpy(),
-            'y_max': y_max.cpu().numpy(),
-            # 'fitA': fitA
-        }
-    else:
-        scaler_data = {
-            'x_mean': x_mean.cpu().numpy(),  # GPUからCPUへ移動してnumpy配列へ変換
-            'x_std': x_std.cpu().numpy(),
-            'y_mean': y_mean.cpu().numpy(),
-            'y_std': y_std.cpu().numpy(),
-            'fitA': fitA
-        }
 
     scaler_pass = os.path.join(result_dir, "scaler")
     myfunction.wirte_pkl(scaler_data, scaler_pass)
@@ -212,7 +183,7 @@ def main():
     test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False,pin_memory=True, num_workers=1, persistent_workers=True)
 
 
-    start_epoch = 0
+
     record_train_loss = []
     record_test_loss = []
 
@@ -221,10 +192,10 @@ def main():
 
     mintestloss = 99999999999
     counter_step = 0
-    progress = tqdm(total=num_epochs, initial=start_epoch,desc="Epoch")
+    progress = tqdm(total=num_epochs, initial=0, desc="Epoch")
 
     try:
-        for epoch in range(start_epoch, num_epochs):
+        for epoch in range(num_epochs):
             train_loss = train(model, train_loader, optimizer, criterion)
             test_loss, pi_dev, sigma_mean, sigma_min = test(model, test_loader, criterion)
             record_train_loss.append(train_loss)

@@ -454,25 +454,30 @@ class ResNetTransformer(nn.Module):
 
 
 
-class MDN2(nn.Module):
-    def __init__(self, hidden = 128):
+class MDN(nn.Module):
+    def __init__(self, input_dim =3,  hidden = 128, output_class = 2, output_dim = 3):
         super().__init__()
+        
+        self.output_class = output_class
+        self.output_dim = output_dim
+        
         self.backbone = nn.Sequential(
-            nn.Linear(3, hidden),
+            nn.Linear(input_dim, hidden),
             nn.ReLU(),
             nn.Linear(hidden, hidden),
             nn.ReLU()
         )
-        self.out_pi = nn.Linear(hidden, 2)
-        self.out_mu = nn.Linear(hidden, 2*3)
-        self.out_s = nn.Linear(hidden, 2*3)
+        
+        self.out_pi = nn.Linear(hidden, output_class)
+        self.out_mu = nn.Linear(hidden, output_class*output_dim)
+        self.out_s = nn.Linear(hidden, output_class*output_dim)
     
     def forward(self, rotate_seq):
         h = self.backbone(rotate_seq)
         pi_logit = self.out_pi(h)
         pi = torch.softmax(pi_logit, dim = -1)
-        mu = self.out_mu(h).view(-1, 2,3)
-        s = self.out_s(h).view(-1,2,3)
+        mu = self.out_mu(h).view(-1, self.output_class, self.output_dim)
+        s = self.out_s(h).view(-1, self.output_class, self.output_dim)
         sigma = F.softplus(s) + 1e-3
         return pi ,mu,sigma
 
@@ -518,13 +523,13 @@ class SelectorNet(nn.Module):
             return logits, None
     
 class SelectorGRU(nn.Module):
-    def __init__(self, mag_dim = 9, hidden = 64, num_layers = 1, fc_dim = 64, p_drop=0.2):
+    def __init__(self, input_dim,output_calss, output_dim, hidden = 64, num_layers = 1, fc_dim = 64, p_drop=0.2):
         super().__init__()
-        self.gru = nn.GRU(input_size= mag_dim, hidden_size=hidden, num_layers= num_layers,
+        self.gru = nn.GRU(input_size= input_dim, hidden_size=hidden, num_layers= num_layers,
                           batch_first=True, bidirectional=False)
         
         self.selector = nn.Sequential(
-            nn.Linear(hidden + 6, fc_dim),
+            nn.Linear(hidden + output_calss * output_dim, fc_dim),
             nn.ReLU(inplace = True),
             nn.Dropout(p_drop),
             nn.Linear(fc_dim, 2)
